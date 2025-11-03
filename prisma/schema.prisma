@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Roles for system users
+enum Role {
+  ADMIN
+  KEPALA_SEKOLAH
+  GURU
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // relations
+  reportsAuthored   Report[]   @relation("ReportTeacher")
+  documentsUploaded Document[]
+  anecdotesAuthored Anecdote[]
+  questionsAuthored Question[]
+  apeUpdated        Ape[]
+  activityLogs      ActivityLog[]
+}
+
+model Student {
+  id           Int       @id @default(autoincrement())
+  name         String
+  identifier   String?   @unique // NIS or custom id
+  photoUrl     String?
+  className    String?
+  parentName   String?
+  parentPhone  String?
+  address      String?
+  createdAt    DateTime  @default(now())
+
+  reports      Report[]
+  anecdotes    Anecdote[]
+}
+
+model Report {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  photoUrl    String?
+  date        DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  // relations
+  studentId Int
+  student   Student   @relation(fields: [studentId], references: [id])
+
+  teacherId Int
+  teacher   User      @relation("ReportTeacher", fields: [teacherId], references: [id])
+}
+
+model Document {
+  id          Int       @id @default(autoincrement())
+  title       String
+  category    String?
+  filePath    String
+  uploadedAt  DateTime  @default(now())
+
+  uploadedById Int
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+}
+
+model Anecdote {
+  id         Int       @id @default(autoincrement())
+  content    String
+  date       DateTime  @default(now())
+  imageUrl   String?
+
+  // relations
+  teacherId Int
+  teacher   User     @relation(fields: [teacherId], references: [id])
+
+  studentId Int?
+  student   Student? @relation(fields: [studentId], references: [id])
+}
+
+model Question {
+  id        Int       @id @default(autoincrement())
+  text      String
+  imageUrl  String?
+  createdAt DateTime  @default(now())
+
+  teacherId Int
+  teacher   User      @relation(fields: [teacherId], references: [id])
+}
+
+model Ape {
+  id         Int       @id @default(autoincrement())
+  name       String
+  condition  String?
+  quantity   Int       @default(0)
+  location   String?
+  updatedAt  DateTime  @updatedAt
+
+  updatedById Int
+  updatedBy   User      @relation(fields: [updatedById], references: [id])
+}
+
+model ActivityLog {
+  id        Int       @id @default(autoincrement())
+  action    String
+  entity    String?
+  entityId  Int?
+  metadata  Json?
+  createdAt DateTime  @default(now())
+
+  userId Int
+  user   User     @relation(fields: [userId], references: [id])
+}
