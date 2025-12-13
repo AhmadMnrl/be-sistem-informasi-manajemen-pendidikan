@@ -28,13 +28,11 @@ export type AggregateAnecdote = {
 export type AnecdoteAvgAggregateOutputType = {
   id: number | null
   teacherId: number | null
-  studentId: number | null
 }
 
 export type AnecdoteSumAggregateOutputType = {
   id: number | null
   teacherId: number | null
-  studentId: number | null
 }
 
 export type AnecdoteMinAggregateOutputType = {
@@ -43,7 +41,6 @@ export type AnecdoteMinAggregateOutputType = {
   date: Date | null
   imageUrl: string | null
   teacherId: number | null
-  studentId: number | null
 }
 
 export type AnecdoteMaxAggregateOutputType = {
@@ -52,7 +49,6 @@ export type AnecdoteMaxAggregateOutputType = {
   date: Date | null
   imageUrl: string | null
   teacherId: number | null
-  studentId: number | null
 }
 
 export type AnecdoteCountAggregateOutputType = {
@@ -61,7 +57,6 @@ export type AnecdoteCountAggregateOutputType = {
   date: number
   imageUrl: number
   teacherId: number
-  studentId: number
   _all: number
 }
 
@@ -69,13 +64,11 @@ export type AnecdoteCountAggregateOutputType = {
 export type AnecdoteAvgAggregateInputType = {
   id?: true
   teacherId?: true
-  studentId?: true
 }
 
 export type AnecdoteSumAggregateInputType = {
   id?: true
   teacherId?: true
-  studentId?: true
 }
 
 export type AnecdoteMinAggregateInputType = {
@@ -84,7 +77,6 @@ export type AnecdoteMinAggregateInputType = {
   date?: true
   imageUrl?: true
   teacherId?: true
-  studentId?: true
 }
 
 export type AnecdoteMaxAggregateInputType = {
@@ -93,7 +85,6 @@ export type AnecdoteMaxAggregateInputType = {
   date?: true
   imageUrl?: true
   teacherId?: true
-  studentId?: true
 }
 
 export type AnecdoteCountAggregateInputType = {
@@ -102,7 +93,6 @@ export type AnecdoteCountAggregateInputType = {
   date?: true
   imageUrl?: true
   teacherId?: true
-  studentId?: true
   _all?: true
 }
 
@@ -198,7 +188,6 @@ export type AnecdoteGroupByOutputType = {
   date: Date
   imageUrl: string | null
   teacherId: number
-  studentId: number | null
   _count: AnecdoteCountAggregateOutputType | null
   _avg: AnecdoteAvgAggregateOutputType | null
   _sum: AnecdoteSumAggregateOutputType | null
@@ -230,9 +219,7 @@ export type AnecdoteWhereInput = {
   date?: Prisma.DateTimeFilter<"Anecdote"> | Date | string
   imageUrl?: Prisma.StringNullableFilter<"Anecdote"> | string | null
   teacherId?: Prisma.IntFilter<"Anecdote"> | number
-  studentId?: Prisma.IntNullableFilter<"Anecdote"> | number | null
   teacher?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  student?: Prisma.XOR<Prisma.StudentNullableScalarRelationFilter, Prisma.StudentWhereInput> | null
 }
 
 export type AnecdoteOrderByWithRelationInput = {
@@ -241,9 +228,7 @@ export type AnecdoteOrderByWithRelationInput = {
   date?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrderInput | Prisma.SortOrder
   teacher?: Prisma.UserOrderByWithRelationInput
-  student?: Prisma.StudentOrderByWithRelationInput
   _relevance?: Prisma.AnecdoteOrderByRelevanceInput
 }
 
@@ -256,9 +241,7 @@ export type AnecdoteWhereUniqueInput = Prisma.AtLeast<{
   date?: Prisma.DateTimeFilter<"Anecdote"> | Date | string
   imageUrl?: Prisma.StringNullableFilter<"Anecdote"> | string | null
   teacherId?: Prisma.IntFilter<"Anecdote"> | number
-  studentId?: Prisma.IntNullableFilter<"Anecdote"> | number | null
   teacher?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  student?: Prisma.XOR<Prisma.StudentNullableScalarRelationFilter, Prisma.StudentWhereInput> | null
 }, "id">
 
 export type AnecdoteOrderByWithAggregationInput = {
@@ -267,7 +250,6 @@ export type AnecdoteOrderByWithAggregationInput = {
   date?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.AnecdoteCountOrderByAggregateInput
   _avg?: Prisma.AnecdoteAvgOrderByAggregateInput
   _max?: Prisma.AnecdoteMaxOrderByAggregateInput
@@ -283,16 +265,13 @@ export type AnecdoteScalarWhereWithAggregatesInput = {
   content?: Prisma.StringWithAggregatesFilter<"Anecdote"> | string
   date?: Prisma.DateTimeWithAggregatesFilter<"Anecdote"> | Date | string
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"Anecdote"> | string | null
-  teacherId?: Prisma.IntWithAggregatesFilter<"Anecdote"> | number
-  studentId?: Prisma.IntNullableWithAggregatesFilter<"Anecdote"> | number | null
-}
+  teacherId?: Prisma.IntWithAggregatesFilter<"Anecdote"> | number}
 
 export type AnecdoteCreateInput = {
   content: string
   date?: Date | string
   imageUrl?: string | null
   teacher: Prisma.UserCreateNestedOneWithoutAnecdotesAuthoredInput
-  student?: Prisma.StudentCreateNestedOneWithoutAnecdotesInput
 }
 
 export type AnecdoteUncheckedCreateInput = {
@@ -301,7 +280,6 @@ export type AnecdoteUncheckedCreateInput = {
   date?: Date | string
   imageUrl?: string | null
   teacherId: number
-  studentId?: number | null
 }
 
 export type AnecdoteUpdateInput = {
@@ -309,7 +287,6 @@ export type AnecdoteUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   teacher?: Prisma.UserUpdateOneRequiredWithoutAnecdotesAuthoredNestedInput
-  student?: Prisma.StudentUpdateOneWithoutAnecdotesNestedInput
 }
 
 export type AnecdoteUncheckedUpdateInput = {
@@ -318,7 +295,6 @@ export type AnecdoteUncheckedUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   teacherId?: Prisma.IntFieldUpdateOperationsInput | number
-  studentId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type AnecdoteCreateManyInput = {
@@ -327,7 +303,6 @@ export type AnecdoteCreateManyInput = {
   date?: Date | string
   imageUrl?: string | null
   teacherId: number
-  studentId?: number | null
 }
 
 export type AnecdoteUpdateManyMutationInput = {
@@ -342,7 +317,6 @@ export type AnecdoteUncheckedUpdateManyInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   teacherId?: Prisma.IntFieldUpdateOperationsInput | number
-  studentId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type AnecdoteListRelationFilter = {
@@ -367,13 +341,11 @@ export type AnecdoteCountOrderByAggregateInput = {
   date?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrder
 }
 
 export type AnecdoteAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrder
 }
 
 export type AnecdoteMaxOrderByAggregateInput = {
@@ -382,7 +354,6 @@ export type AnecdoteMaxOrderByAggregateInput = {
   date?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrder
 }
 
 export type AnecdoteMinOrderByAggregateInput = {
@@ -391,13 +362,11 @@ export type AnecdoteMinOrderByAggregateInput = {
   date?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrder
 }
 
 export type AnecdoteSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   teacherId?: Prisma.SortOrder
-  studentId?: Prisma.SortOrder
 }
 
 export type AnecdoteCreateNestedManyWithoutTeacherInput = {
@@ -504,7 +473,6 @@ export type AnecdoteUncheckedCreateWithoutTeacherInput = {
   content: string
   date?: Date | string
   imageUrl?: string | null
-  studentId?: number | null
 }
 
 export type AnecdoteCreateOrConnectWithoutTeacherInput = {
@@ -591,14 +559,12 @@ export type AnecdoteCreateManyTeacherInput = {
   content: string
   date?: Date | string
   imageUrl?: string | null
-  studentId?: number | null
 }
 
 export type AnecdoteUpdateWithoutTeacherInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  student?: Prisma.StudentUpdateOneWithoutAnecdotesNestedInput
 }
 
 export type AnecdoteUncheckedUpdateWithoutTeacherInput = {
@@ -606,7 +572,6 @@ export type AnecdoteUncheckedUpdateWithoutTeacherInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  studentId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type AnecdoteUncheckedUpdateManyWithoutTeacherInput = {
@@ -614,7 +579,6 @@ export type AnecdoteUncheckedUpdateManyWithoutTeacherInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  studentId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type AnecdoteCreateManyStudentInput = {
@@ -656,9 +620,7 @@ export type AnecdoteSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   date?: boolean
   imageUrl?: boolean
   teacherId?: boolean
-  studentId?: boolean
   teacher?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  student?: boolean | Prisma.Anecdote$studentArgs<ExtArgs>
 }, ExtArgs["result"]["anecdote"]>
 
 
@@ -669,13 +631,11 @@ export type AnecdoteSelectScalar = {
   date?: boolean
   imageUrl?: boolean
   teacherId?: boolean
-  studentId?: boolean
 }
 
 export type AnecdoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "content" | "date" | "imageUrl" | "teacherId" | "studentId", ExtArgs["result"]["anecdote"]>
 export type AnecdoteInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   teacher?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  student?: boolean | Prisma.Anecdote$studentArgs<ExtArgs>
 }
 
 export type $AnecdotePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -690,8 +650,7 @@ export type $AnecdotePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     date: Date
     imageUrl: string | null
     teacherId: number
-    studentId: number | null
-  }, ExtArgs["result"]["anecdote"]>
+    }, ExtArgs["result"]["anecdote"]>
   composites: {}
 }
 
@@ -1067,7 +1026,6 @@ export interface AnecdoteFieldRefs {
   readonly date: Prisma.FieldRef<"Anecdote", 'DateTime'>
   readonly imageUrl: Prisma.FieldRef<"Anecdote", 'String'>
   readonly teacherId: Prisma.FieldRef<"Anecdote", 'Int'>
-  readonly studentId: Prisma.FieldRef<"Anecdote", 'Int'>
 }
     
 

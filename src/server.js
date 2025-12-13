@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const multer = require('multer');
+const { sendResponse } = require('./utils/response');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth.routes');
@@ -14,6 +16,8 @@ const apeRoutes = require('./routes/ape.routes');
 const logsRoutes = require('./routes/logs.routes');
 const searchRoutes = require('./routes/search.routes');
 const summaryRoutes = require('./routes/summary.routes');
+const templateRoutes = require('./routes/templates.routes');
+const studentReportsRoutes = require('./routes/studentReports.routes');
 
 const app = express();
 
@@ -41,17 +45,35 @@ app.use('/api/ape', apeRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/summary', summaryRoutes);
+app.use('/api/rapor', templateRoutes);
+app.use('/api/reports', studentReportsRoutes);
+
+// Global error handler - HARUS sebelum app.listen()
+app.use((err, req, res, next) => {
+	console.error('Unhandled Error:', err);
+	
+	// Handle Multer errors
+	if (err instanceof multer.MulterError) {
+		if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+			return sendResponse(res, 400, `Field '${err.field}' tidak diharapkan. Untuk dokumen gunakan field 'file', untuk gambar gunakan field 'photo' atau 'image'`);
+		}
+		if (err.code === 'LIMIT_FILE_SIZE') {
+			return sendResponse(res, 400, 'Ukuran file terlalu besar');
+		}
+		return sendResponse(res, 400, `Error upload: ${err.message}`);
+	}
+	
+	// Handle other errors
+	if (err.message) {
+		return sendResponse(res, err.status || 500, err.message);
+	}
+	
+	return sendResponse(res, 500, 'Terjadi kesalahan pada server');
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
 	console.log(`API running on port ${PORT}`);
-});
-
-// Global error handler
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-	console.error('Unhandled Error:', err);
-	return res.status(500).json({ message: 'Terjadi kesalahan pada server' });
 });
 
 

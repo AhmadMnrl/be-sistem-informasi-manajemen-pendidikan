@@ -7,16 +7,12 @@ const { listUsers, createUser, getUser, updateUser, deleteUser } = require('../c
 
 const router = express.Router();
 
-router.use(authMiddleware, authorize('ADMIN'));
+router.use(authMiddleware, authorize('ADMIN')); // Hanya Admin yang bisa kelola users
 
 router.get('/', listUsers);
-
-router.post('/', validate({ body: userCreateSchema }), createUser);
-
 router.get('/:id', getUser);
-
+router.post('/', validate({ body: userCreateSchema }), createUser);
 router.put('/:id', validate({ body: userUpdateSchema }), updateUser);
-
 router.delete('/:id', deleteUser);
 
 module.exports = router;

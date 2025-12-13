@@ -1,4 +1,5 @@
 const { prisma } = require('../prisma');
+const { sendResponse } = require('../utils/response');
 
 function parsePaging(req) {
 	const page = Math.max(1, Number(req.query.page) || 1);
@@ -23,7 +24,7 @@ async function searchAll(req, res) {
 		prisma.report.findMany({ where: q ? { title: { contains: q, mode: 'insensitive' } } : undefined, orderBy: { id: 'desc' }, skip, take }),
 		prisma.report.count({ where: q ? { title: { contains: q, mode: 'insensitive' } } : undefined }),
 	]);
-	return res.json({
+	return sendResponse(res, 200, 'Pencarian berhasil', {
 		query: q,
 		page,
 		pageSize,
