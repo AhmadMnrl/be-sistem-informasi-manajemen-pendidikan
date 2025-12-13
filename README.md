@@ -119,16 +119,31 @@ Authorization: Bearer <token>
 - DELETE `/api/reports/:id` (Guru/Admin)
 
 ### Documents (Akreditasi) — Kepsek/Admin tulis
-- GET `/api/documents?q=...`
-- POST `/api/documents` (Kepsek/Admin) form-data: `title`, opsional `category`, file `file`
+- GET `/api/documents?q=...&year=2022` atau `?from=YYYY-MM-DD&to=YYYY-MM-DD` (filter berdasarkan `documentDate`)
+- POST `/api/documents` (Kepsek/Admin) form-data: `title`, opsional `category`, opsional `documentDate` (YYYY-MM-DD), file `file`
 - GET `/api/documents/:id`
-- PUT `/api/documents/:id` (Kepsek/Admin) form-data opsional `file`
+- PUT `/api/documents/:id` (Kepsek/Admin) form-data opsional `file`, opsional `documentDate`
 - DELETE `/api/documents/:id` (Kepsek/Admin)
 - GET `/api/documents/:id/download` (unduh file)
 
+Contoh request (POST /api/documents):
+- form-data: `title=Laporan Mutu 2022`, `category=Akreditasi`, `documentDate=2022-06-01`, file `file`=PDF
+Contoh response:
+```
+{
+  "id": 5,
+  "title": "Laporan Mutu 2022",
+  "category": "Akreditasi",
+  "filePath": "/uploads/documents/laporan-mutu-2022.pdf",
+  "documentDate": "2022-06-01T00:00:00.000Z",
+  "uploadedAt": "2025-11-03T15:00:00.000Z",
+  "uploadedById": 1
+}
+```
+
 ### Anecdotes (Guru tulis)
-- GET `/api/anecdotes?studentId=...`
-- POST `/api/anecdotes` (Guru) form-data: `content`, opsional `date`, `studentId`, file `image`
+- GET `/api/anecdotes` (semua anekdot; tidak per-student)
+- POST `/api/anecdotes` (Guru) form-data: `content`, opsional `date`, file `image`
 - GET `/api/anecdotes/:id`
 - PUT `/api/anecdotes/:id` (Guru) form-data opsional + file `image`
 - DELETE `/api/anecdotes/:id` (Guru)
@@ -156,6 +171,117 @@ Authorization: Bearer <token>
 ### Summary (Ringkasan)
 - GET `/api/summary?period=month|day|year` ATAU `?from=YYYY-MM-DD&to=YYYY-MM-DD`
   - respon: `{ period: {start,end}, studentsCount, reportsCount, documentsCount, anecdotesCount }`
+
+### Templates & Student Reports
+- GET `/api/templates` — ambil semua template rapor (array), format sama seperti GET by ID
+- POST `/api/templates` (Admin/Kepsek) — buat template rapor.
+  - Contoh payload:
+```
+{
+  "title": "Template Rapor 2022",
+  "year": 2022,
+  "data": [
+    {
+      "Section": 1,
+      "type": "table",
+      "Questions": [
+        {
+          "Question": "SISWA MAMPU MENJELASKAN TETEK BENGEK",
+          "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"]
+        },
+        {
+          "Question": "SISWA MAMPU berlari 100 meter dalam 1 menit",
+          "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"]
+        }
+      ]
+    },
+    {
+      "Section": 2,
+      "type": "text",
+      "Questions": [
+        { "Question": "Deskripsi Perkembangan Motorik Anak :", "answers": [] }
+      ]
+    }
+  ]
+}
+```
+- GET `/api/templates` — contoh response (array semua template, format sama dengan GET by ID):
+```
+[
+  {
+    "id": 1,
+    "title": "Template Rapor 2022",
+    "year": 2022,
+    "data": [
+    {
+      "Section": "1",
+      "type": "table",
+      "Questions": [
+        { "Question": "SISWA MAMPU MENJELASKAN TETEK BENGEK", "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"], "Answer": "", "Ket": "" },
+        { "Question": "SISWA MAMPU berlari 100 meter dalam 1 menit", "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"], "Answer": "", "Ket": "" }
+      ],
+      "Answer": "",
+      "Photo": ""
+    },
+    {
+      "Section": "2",
+      "type": "text",
+      "Questions": [ { "Question": "Deskripsi Perkembangan Motorik Anak :", "answers": [], "Answer": "", "Ket": "" } ],
+      "Answer": "",
+      "Photo": ""
+    }
+  ]
+  },
+  {
+    "id": 2,
+    "title": "Template Rapor 2023",
+    "year": 2023,
+    "data": [...]
+  }
+]
+```
+- GET `/api/templates/:id` — contoh response:
+```
+{
+  "id": 1,
+  "title": "Template Rapor 2022",
+  "year": 2022,
+  "data": [
+    {
+      "Section": "1",
+      "type": "table",
+      "Questions": [
+        { "Question": "SISWA MAMPU MENJELASKAN TETEK BENGEK", "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"], "Answer": "", "Ket": "" },
+        { "Question": "SISWA MAMPU berlari 100 meter dalam 1 menit", "answers": ["SANGAT MAMPU","MAMPU","CUKUP MAMPU","TIDAK MAMPU"], "Answer": "", "Ket": "" }
+      ],
+      "Answer": "",
+      "Photo": ""
+    },
+    {
+      "Section": "2",
+      "type": "text",
+      "Questions": [ { "Question": "Deskripsi Perkembangan Motorik Anak :", "answers": [], "Answer": "", "Ket": "" } ],
+      "Answer": "",
+      "Photo": ""
+    }
+  ]
+}
+```
+- POST `/api/student-reports` (Guru/Admin) — submit jawaban rapor.
+  - Contoh payload:
+```
+{
+  "studentId": 1,
+  "templateId": 1,
+  "year": 2022,
+  "answers": [
+    { "questionId": 10, "answer": "MAMPU", "ket": "Sudah konsisten" },
+    { "questionId": 11, "answer": "CUKUP MAMPU", "ket": "Latihan" },
+    { "questionId": 12, "answer": "Perkembangan motorik baik", "ket": "Foto diserahkan terpisah" }
+  ]
+}
+```
+  - Contoh response: `{ "id": 1 }`
 
 ---
 

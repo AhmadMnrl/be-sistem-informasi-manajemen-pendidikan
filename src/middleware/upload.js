@@ -24,7 +24,48 @@ const imageFilter = (req, file, cb) => {
 	cb(new Error('File harus berupa gambar')); 
 };
 
-const uploadImage = multer({ storage: makeStorage('images'), fileFilter: imageFilter });
-const uploadDocument = multer({ storage: makeStorage('documents') });
+const uploadImage = multer({ 
+	storage: makeStorage('images'), 
+	fileFilter: imageFilter,
+	limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
 
-module.exports = { uploadImage, uploadDocument };
+const uploadDocument = multer({ 
+	storage: makeStorage('documents'),
+	limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
+
+// Error handler untuk multer - harus di tempatkan SETELAH middleware upload
+function handleMulterError(err, req, res, next) {
+	if (err instanceof multer.MulterError) {
+		if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+			return res.status(400).json({
+				status: 400,
+				message: `Field '${err.field}' tidak diharapkan. Untuk dokumen gunakan field 'file', untuk gambar gunakan field 'photo' atau 'image'`,
+				success: false,
+			});
+		}
+		if (err.code === 'LIMIT_FILE_SIZE') {
+			return res.status(400).json({
+				status: 400,
+				message: 'Ukuran file terlalu besar',
+				success: false,
+			});
+		}
+		return res.status(400).json({
+			status: 400,
+			message: `Error upload: ${err.message}`,
+			success: false,
+		});
+	}
+	if (err) {
+		return res.status(400).json({
+			status: 400,
+			message: err.message || 'Error saat mengunggah file',
+			success: false,
+		});
+	}
+	next();
+}
+
+module.exports = { uploadImage, uploadDocument, handleMulterError };

@@ -8,16 +8,14 @@ const { listReports, createReport, getReport, updateReport, deleteReport } = req
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware); // Semua role bisa baca
 
 router.get('/', listReports);
-
-router.post('/', authorize('GURU', 'ADMIN'), uploadImage.single('photo'), validate({ body: reportCreateSchema }), createReport);
-
 router.get('/:id', getReport);
 
-router.put('/:id', authorize('GURU', 'ADMIN'), uploadImage.single('photo'), validate({ body: reportUpdateSchema }), updateReport);
-
-router.delete('/:id', authorize('GURU', 'ADMIN'), deleteReport);
+// Semua role bisa write (Admin, Kepsek, Guru)
+router.post('/', uploadImage.single('photo'), validate({ body: reportCreateSchema }), createReport);
+router.put('/:id', uploadImage.single('photo'), validate({ body: reportUpdateSchema }), updateReport);
+router.delete('/:id', deleteReport);
 
 module.exports = router;

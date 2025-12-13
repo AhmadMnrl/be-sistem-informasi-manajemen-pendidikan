@@ -1,4 +1,5 @@
 const { prisma } = require('../prisma');
+const { sendResponse } = require('../utils/response');
 
 function parseDateRange(req) {
 	const { from, to, period } = req.query;
@@ -34,10 +35,10 @@ async function summary(req, res) {
 	] = await Promise.all([
 		prisma.student.count(),
 		prisma.report.count({ where: whereDate('createdAt') }),
-		prisma.document.count({ where: whereDate('uploadedAt') }),
+		prisma.document.count({ where: whereDate('documentDate') }),
 		prisma.anecdote.count({ where: whereDate('date') }),
 	]);
-	return res.json({
+	return sendResponse(res, 200, 'Ringkasan statistik berhasil diambil', {
 		period: { start, end },
 		studentsCount,
 		reportsCount,

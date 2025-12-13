@@ -8,16 +8,14 @@ const { listAnecdotes, createAnecdote, getAnecdote, updateAnecdote, deleteAnecdo
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware); // Semua role bisa akses
 
 router.get('/', listAnecdotes);
-
-router.post('/', authorize('GURU'), uploadImage.single('image'), validate({ body: anecdoteCreateSchema }), createAnecdote);
-
 router.get('/:id', getAnecdote);
 
-router.put('/:id', authorize('GURU'), uploadImage.single('image'), validate({ body: anecdoteUpdateSchema }), updateAnecdote);
-
-router.delete('/:id', authorize('GURU'), deleteAnecdote);
+// Semua role bisa write (Admin, Kepsek, Guru)
+router.post('/', uploadImage.single('image'), validate({ body: anecdoteCreateSchema }), createAnecdote);
+router.put('/:id', uploadImage.single('image'), validate({ body: anecdoteUpdateSchema }), updateAnecdote);
+router.delete('/:id', deleteAnecdote);
 
 module.exports = router;

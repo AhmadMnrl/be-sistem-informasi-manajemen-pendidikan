@@ -1,28 +1,33 @@
 const { prisma } = require('../prisma');
 const { logActivity } = require('../utils/activityLog');
+const { sendResponse } = require('../utils/response');
 
 async function listQuestions(req, res) {
 	const q = req.query.q || '';
 	const where = q ? { text: { contains: q, mode: 'insensitive' } } : undefined;
 	const items = await prisma.question.findMany({ where, orderBy: { id: 'desc' } });
-	return res.json(items);
+	return sendResponse(res, 200, 'Data soal berhasil diambil', items);
 }
 
 async function createQuestion(req, res) {
 	const { text } = req.body || {};
-	if (!text) return res.status(400).json({ message: 'text wajib' });
+	if (!text) return sendResponse(res, 400, 'Text wajib diisi');
 	const imageUrl = req.file ? `/uploads/images/${req.file.filename}` : null;
 	const teacherId = req.user.id;
-	const created = await prisma.question.create({ data: { text, imageUrl, teacherId } });
-	await logActivity({ userId: req.user.id, action: 'CREATE_QUESTION', entity: 'Question', entityId: created.id });
-	return res.status(201).json(created);
+	try {
+		const created = await prisma.question.create({ data: { text, imageUrl, teacherId } });
+		await logActivity({ userId: req.user.id, action: 'CREATE_QUESTION', entity: 'Question', entityId: created.id });
+		return sendResponse(res, 201, 'Soal berhasil dibuat', created);
+	} catch (e) {
+		return sendResponse(res, 500, 'Gagal membuat soal');
+	}
 }
 
 async function getQuestion(req, res) {
 	const id = Number(req.params.id);
 	const item = await prisma.question.findUnique({ where: { id } });
-	if (!item) return res.status(404).json({ message: 'Soal tidak ditemukan' });
-	return res.json(item);
+	if (!item) return sendResponse(res, 404, 'Soal tidak ditemukan');
+	return sendResponse(res, 200, 'Data soal berhasil diambil', item);
 }
 
 async function updateQuestion(req, res) {
@@ -34,9 +39,9 @@ async function updateQuestion(req, res) {
 	try {
 		const updated = await prisma.question.update({ where: { id }, data });
 		await logActivity({ userId: req.user.id, action: 'UPDATE_QUESTION', entity: 'Question', entityId: updated.id });
-		return res.json(updated);
+		return sendResponse(res, 200, 'Soal berhasil diperbarui', updated);
 	} catch (e) {
-		return res.status(404).json({ message: 'Soal tidak ditemukan' });
+		return sendResponse(res, 404, 'Soal tidak ditemukan');
 	}
 }
 
@@ -45,9 +50,9 @@ async function deleteQuestion(req, res) {
 	try {
 		await prisma.question.delete({ where: { id } });
 		await logActivity({ userId: req.user.id, action: 'DELETE_QUESTION', entity: 'Question', entityId: id });
-		return res.json({ success: true });
+		return sendResponse(res, 200, 'Soal berhasil dihapus');
 	} catch (e) {
-		return res.status(404).json({ message: 'Soal tidak ditemukan' });
+		return sendResponse(res, 404, 'Soal tidak ditemukan');
 	}
 }
 
