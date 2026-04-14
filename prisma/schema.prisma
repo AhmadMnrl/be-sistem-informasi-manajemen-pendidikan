@@ -25,6 +25,11 @@ enum QuestionType {
   PHOTO      // unggah foto
 }
 
+enum Semester {
+  GANJIL
+  GENAP
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   name         String
@@ -199,6 +204,7 @@ model ReportAnswerOption {
 model StudentReport {
   id           Int                  @id @default(autoincrement())
   year         Int
+  semester     Semester             @default(GANJIL)
   createdAt    DateTime             @default(now())
 
   studentId    Int

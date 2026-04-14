@@ -1,20 +1,20 @@
-const { z } = require('zod');
+const { z } = require("zod");
 
 // ENUMS untuk UI
-const roleEnum = z.enum(['ADMIN', 'KEPALA_SEKOLAH', 'GURU']);
-const sectionTypeEnum = z.enum(['table_text', 'table_option', 'table', 'text']);
-const questionTypeEnum = z.enum(['QUESTION', 'FREE_TEXT', 'PHOTO']);
+const roleEnum = z.enum(["ADMIN", "KEPALA_SEKOLAH", "GURU"]);
+const sectionTypeEnum = z.enum(["table_text", "table_option", "table", "text"]);
+const questionTypeEnum = z.enum(["QUESTION", "FREE_TEXT", "PHOTO"]);
 
 // AUTH
 const loginSchema = z.object({
-  email: z.string().email('Email tidak valid'),
-  password: z.string().min(6, 'Password minimal 6 karakter'),
+  email: z.string().email("Email tidak valid"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
 });
 
 const registerSchema = z.object({
-  name: z.string().min(1, 'Nama wajib diisi'),
-  email: z.string().email('Email tidak valid'),
-  password: z.string().min(6, 'Password minimal 6 karakter'),
+  name: z.string().min(1, "Nama wajib diisi"),
+  email: z.string().email("Email tidak valid"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
   role: roleEnum,
 });
 
@@ -22,7 +22,7 @@ const registerSchema = z.object({
 const userCreateSchema = registerSchema;
 const userUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  email: z.string().email('Email tidak valid').optional(),
+  email: z.string().email("Email tidak valid").optional(),
   password: z.string().min(6).optional(),
   role: roleEnum.optional(),
 });
@@ -44,12 +44,18 @@ const studentUpdateSchema = studentCreateSchema.partial();
 const documentCreateSchema = z.object({
   title: z.string().min(1),
   category: z.string().optional().nullable(),
-  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  documentDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 const documentUpdateSchema = z.object({
   title: z.string().min(1).optional(),
   category: z.string().optional().nullable(),
-  documentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  documentDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 // ANECDOTES
@@ -85,7 +91,7 @@ const paginationQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().optional().default(5),
 });
 const searchQuerySchema = z.object({
-  q: z.string().optional().default(''),
+  q: z.string().optional().default(""),
   page: z.coerce.number().int().positive().optional().default(1),
   pageSize: z.coerce.number().int().positive().optional().default(5),
 });
@@ -93,9 +99,9 @@ const searchQuerySchema = z.object({
 // TEMPLATE (UI format sesuai request)
 const templateQuestionSchema = z.object({
   Question: z.string().min(1),
-  answer: z.string().optional().default(''),
+  answer: z.string().optional().default(""),
   answers: z.array(z.string()).optional().default([]),
-  photo: z.string().optional().default(''),
+  photo: z.string().optional().default(""),
   Ket: z.string().optional().nullable(),
 });
 const templateSectionSchema = z.object({
@@ -120,6 +126,22 @@ const studentReportSubmitSchema = z.object({
   studentId: z.coerce.number().int().positive(),
   templateId: z.coerce.number().int().positive(),
   year: z.coerce.number().int().positive(),
+  semester: z
+    .preprocess(
+      (v) => {
+        if (v === undefined || v === null || v === "") return "ganjil";
+        if (typeof v === "number") return v === 2 ? "genap" : "ganjil";
+        if (typeof v === "string") {
+          const normalized = v.trim().toLowerCase();
+          if (normalized === "1") return "ganjil";
+          if (normalized === "2") return "genap";
+          return normalized;
+        }
+        return v;
+      },
+      z.enum(["ganjil", "genap"]),
+    )
+    .default("ganjil"),
   answers: z.array(studentReportAnswerSchema).min(1),
 });
 

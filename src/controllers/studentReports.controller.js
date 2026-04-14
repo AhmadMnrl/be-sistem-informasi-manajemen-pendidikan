@@ -1,12 +1,26 @@
-const { prisma } = require('../prisma');
-const { sendResponse } = require('../utils/response');
+const { prisma } = require("../prisma");
+const { sendResponse } = require("../utils/response");
+
+function normalizeSemesterToDb(value) {
+  if (value === undefined || value === null || value === "") return "GANJIL";
+  if (typeof value === "number") return value === 2 ? "GENAP" : "GANJIL";
+  const v = String(value).trim().toLowerCase();
+  if (v === "2" || v === "genap") return "GENAP";
+  return "GANJIL";
+}
+
+function mapSemesterToUi(value) {
+  return value === "GENAP" ? "genap" : "ganjil";
+}
 
 function mapSectionType(dbType, title, sectionNumber) {
-  const isNilai = (title || '').toLowerCase().includes('nilai') || sectionNumber === 0;
-  if (isNilai) return 'table_text';
+  const isNilai = (title || "").toLowerCase().includes("nilai") || sectionNumber === 0;
+  if (isNilai) return "table_text";
   switch (dbType) {
-    case 'TEXT': return 'text';
-    default: return 'table';
+    case "TEXT":
+      return "text";
+    default:
+      return "table";
   }
 }
 
@@ -29,6 +43,67 @@ function flattenUiPayloadToAnswers(uiBody, templateQuestionsIndex) {
   return answers;
 }
 
+async function listStudentReports(req, res) {
+  try {
+    const studentId = req.query.studentId ? Number(req.query.studentId) : undefined;
+    const templateId = req.query.templateId ? Number(req.query.templateId) : undefined;
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const semester = req.query.semester ? normalizeSemesterToDb(req.query.semester) : undefined;
+
+    const reports = await prisma.studentReport.findMany({
+      where: {
+        ...(studentId ? { studentId } : {}),
+        ...(templateId ? { templateId } : {}),
+        ...(year ? { year } : {}),
+        ...(semester ? { semester } : {}),
+      },
+      orderBy: { id: "desc" },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            identifier: true,
+            nisn: true,
+            className: true,
+            tahunAjaran: true,
+          },
+        },
+        template: {
+          select: {
+            id: true,
+            title: true,
+            year: true,
+            isActive: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            answers: true,
+          },
+        },
+      },
+    });
+
+    const normalizedReports = reports.map((r) => ({
+      ...r,
+      semester: mapSemesterToUi(r.semester),
+    }));
+
+    return sendResponse(res, 200, "Data laporan siswa berhasil diambil", normalizedReports);
+  } catch (error) {
+    console.error("❌ listStudentReports error:", error);
+    return sendResponse(res, 500, "Gagal mengambil data laporan siswa");
+  }
+}
+
 async function getStudentReportDetail(req, res) {
   try {
     const id = Number(req.params.id);
@@ -38,58 +113,60 @@ async function getStudentReportDetail(req, res) {
         template: {
           include: {
             sections: {
-              orderBy: { order: 'asc' },
+              orderBy: { order: "asc" },
               include: {
                 questions: {
-                  orderBy: { order: 'asc' },
+                  orderBy: { order: "asc" },
                   include: {
-                    options: { orderBy: { id: 'asc' } },
-                    studentAnswers: { where: { studentReportId: id } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                    options: { orderBy: { id: "asc" } },
+                    studentAnswers: { where: { studentReportId: id } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
-    if (!report) return sendResponse(res, 404, 'Laporan siswa tidak ditemukan');
+    if (!report) return sendResponse(res, 404, "Laporan siswa tidak ditemukan");
 
     const formatted = {
       title: report.template.title,
       year: report.year,
+      semester: mapSemesterToUi(report.semester),
       studentId: report.studentId,
       templateId: report.templateId,
-      data: report.template.sections.map(section => ({
+      data: report.template.sections.map((section) => ({
         Section: `${section.sectionNumber}. ${section.title}`,
         type: mapSectionType(section.type, section.title, section.sectionNumber),
-        Questions: section.questions.map(q => {
+        Questions: section.questions.map((q) => {
           const ans = q.studentAnswers[0] || {};
-          const base = { Question: q.text, answers: [], answer: '', Ket: ans.ket || '', photo: ans.photoUrl || '', predikat: ans.predikat || '' };
-          if (q.type === 'QUESTION') return { ...base, answers: q.options.map(o => o.label), answer: ans.selectedOption || '' };
-          if (q.type === 'FREE_TEXT') return { ...base, answers: [], answer: ans.answerText || '' };
+          const base = { Question: q.text, answers: [], answer: "", Ket: ans.ket || "", photo: ans.photoUrl || "", predikat: ans.predikat || "" };
+          if (q.type === "QUESTION") return { ...base, answers: q.options.map((o) => o.label), answer: ans.selectedOption || "" };
+          if (q.type === "FREE_TEXT") return { ...base, answers: [], answer: ans.answerText || "" };
           return { ...base, answers: [] };
-        })
-      }))
+        }),
+      })),
     };
 
-    return sendResponse(res, 200, 'Detail laporan siswa berhasil diambil', formatted);
+    return sendResponse(res, 200, "Detail laporan siswa berhasil diambil", formatted);
   } catch (error) {
-    console.error('❌ getStudentReportDetail error:', error);
-    return sendResponse(res, 500, 'Gagal mengambil detail laporan siswa');
+    console.error("❌ getStudentReportDetail error:", error);
+    return sendResponse(res, 500, "Gagal mengambil detail laporan siswa");
   }
 }
 
 async function submitStudentReport(req, res) {
   try {
-    const { studentId, templateId, year } = req.body;
+    const { studentId, templateId, year, semester } = req.body;
+    const normalizedSemester = normalizeSemesterToDb(semester);
 
     // Gunakan template aktif jika templateId tidak dikirim atau ingin force active
     const activeTemplate = await prisma.reportTemplate.findFirst({
       where: { isActive: true },
-      include: { sections: { include: { questions: true } } }
+      include: { sections: { include: { questions: true } } },
     });
-    if (!activeTemplate) return sendResponse(res, 404, 'Template aktif tidak ditemukan');
+    if (!activeTemplate) return sendResponse(res, 404, "Template aktif tidak ditemukan");
 
     const effectiveTemplateId = templateId || activeTemplate.id;
 
@@ -97,12 +174,10 @@ async function submitStudentReport(req, res) {
     const index = new Map();
     for (const s of activeTemplate.sections) for (const q of s.questions) index.set(q.text, q.id);
 
-    const answers = Array.isArray(req.body.answers)
-      ? req.body.answers
-      : flattenUiPayloadToAnswers(req.body, index);
+    const answers = Array.isArray(req.body.answers) ? req.body.answers : flattenUiPayloadToAnswers(req.body, index);
 
     const studentReport = await prisma.studentReport.create({
-      data: { studentId, templateId: effectiveTemplateId, year, createdById: req.user.id }
+      data: { studentId, templateId: effectiveTemplateId, year, semester: normalizedSemester, createdById: req.user.id },
     });
 
     for (const a of answers) {
@@ -111,23 +186,24 @@ async function submitStudentReport(req, res) {
         data: {
           studentReportId: studentReport.id,
           questionId: a.questionId,
-          selectedOption: question?.type === 'QUESTION' ? a.answer ?? null : null,
-          answerText: question?.type !== 'QUESTION' ? a.answer ?? null : null,
+          selectedOption: question?.type === "QUESTION" ? (a.answer ?? null) : null,
+          answerText: question?.type !== "QUESTION" ? (a.answer ?? null) : null,
           photoUrl: a.photo ?? null,
           ket: a.ket ?? null,
           predikat: a.predikat ?? null,
-        }
+        },
       });
     }
 
-    return sendResponse(res, 201, 'Jawaban siswa berhasil disimpan', { id: studentReport.id });
+    return sendResponse(res, 201, "Jawaban siswa berhasil disimpan", { id: studentReport.id, semester: mapSemesterToUi(studentReport.semester) });
   } catch (error) {
-    console.error('❌ submitStudentReport error:', error);
-    return sendResponse(res, 500, 'Gagal menyimpan jawaban siswa');
+    console.error("❌ submitStudentReport error:", error);
+    return sendResponse(res, 500, "Gagal menyimpan jawaban siswa");
   }
 }
 
 module.exports = {
+  listStudentReports,
   getStudentReportDetail,
   submitStudentReport,
 };
