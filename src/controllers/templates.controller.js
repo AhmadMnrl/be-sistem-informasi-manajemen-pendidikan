@@ -35,6 +35,7 @@ async function getActiveTemplate(req, res) {
     if (!template) return sendResponse(res, 404, "Template rapor aktif belum tersedia");
 
     const formatted = {
+      templateId: template.id,
       title: template.title,
       year: template.year,
       data: template.sections.map((section) => ({
