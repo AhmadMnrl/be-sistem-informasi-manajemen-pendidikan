@@ -38,7 +38,8 @@ model User {
   documentsUploaded     Document[]
   anecdotes             Anecdote[]
   questionsAuthored     Question[]
-  apeUpdated            Ape[]
+  apeUpdated            Ape[]        @relation("ApeUpdatedBy")
+  apeCreated            Ape[]        @relation("ApeCreatedBy")
   activityLogs          ActivityLog[]
   createdTemplates      ReportTemplate[]
   createdStudentReports StudentReport[]
@@ -123,10 +124,13 @@ model Ape {
   condition  String?
   quantity   Int       @default(0)
   location   String?
+  createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
+  createdById Int?
+  createdBy   User?     @relation("ApeCreatedBy", fields: [createdById], references: [id])
   updatedById Int
-  updatedBy   User      @relation(fields: [updatedById], references: [id])
+  updatedBy   User      @relation("ApeUpdatedBy", fields: [updatedById], references: [id])
 }
 
 model ActivityLog {

@@ -1,50 +1,61 @@
 const { prisma } = require('../prisma');
 const { sendResponse } = require('../utils/response');
 
-function parseDateRange(req) {
-	const { from, to, period } = req.query;
-	let start, end;
-	if (from) start = new Date(from);
-	if (to) end = new Date(to);
-	// fallback per period jika tidak ada from/to
-	const now = new Date();
-	if (!start || !end) {
-		if (period === 'day') {
-			start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-		} else if (period === 'year') {
-			start = new Date(now.getFullYear(), 0, 1);
-			end = new Date(now.getFullYear() + 1, 0, 1);
-		} else {
-			// default bulan berjalan
-			start = new Date(now.getFullYear(), now.getMonth(), 1);
-			end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-		}
-	}
-	return { start, end };
-}
-
 async function summary(req, res) {
-	const { start, end } = parseDateRange(req);
-	const whereDate = (field) => ({ [field]: { gte: start, lt: end } });
-	const [
-		studentsCount,
-		reportsCount,
-		documentsCount,
-		anecdotesCount,
-	] = await Promise.all([
-		prisma.student.count(),
-		prisma.report.count({ where: whereDate('createdAt') }),
-		prisma.document.count({ where: whereDate('documentDate') }),
-		prisma.anecdote.count({ where: whereDate('date') }),
-	]);
-	return sendResponse(res, 200, 'Ringkasan statistik berhasil diambil', {
-		period: { start, end },
-		studentsCount,
-		reportsCount,
-		documentsCount,
-		anecdotesCount,
-	});
+  try {
+    const [
+      studentsCount,
+      reportsCount,
+      documentsCount,
+      anecdotesCountTotal,
+      guruCount,
+    ] = await Promise.all([
+      prisma.student.count(),
+      prisma.report.count(),
+      prisma.document.count(),
+      prisma.anecdote.count(),
+      prisma.user.count({ where: { role: 'GURU' } }),
+    ]);
+
+    let latestAnecdotes = await prisma.anecdote.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        content: true,
+        description: true,
+        category: true,
+        date: true,
+        createdAt: true,
+        teacherId: true,
+      },
+    });
+    const ids = [...new Set(latestAnecdotes.map(a => a.teacherId).filter(Boolean))];
+    let teacherMap = new Map();
+    if (ids.length) {
+      const teachers = await prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true }
+      });
+      teacherMap = new Map(teachers.map(t => [t.id, t]));
+    }
+    latestAnecdotes = latestAnecdotes.map(a => ({
+      ...a,
+      teacher: a.teacherId ? teacherMap.get(a.teacherId) || null : null,
+    }));
+
+    return sendResponse(res, 200, 'Ringkasan statistik berhasil diambil', {
+      studentsCount,
+      reportsCount,
+      documentsCount,
+      anecdotesCountTotal,
+      guruCount,
+      latestAnecdotes,
+    });
+  } catch (error) {
+    console.error('❌ summary error:', error);
+    return sendResponse(res, 500, 'Gagal mengambil ringkasan statistik', null, error);
+  }
 }
 
 module.exports = { summary };

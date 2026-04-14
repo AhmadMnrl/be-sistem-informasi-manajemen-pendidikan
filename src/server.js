@@ -48,11 +48,9 @@ app.use('/api/summary', summaryRoutes);
 app.use('/api/rapor', templateRoutes);
 app.use('/api/reports', studentReportsRoutes);
 
-// Global error handler - HARUS sebelum app.listen()
 app.use((err, req, res, next) => {
 	console.error('Unhandled Error:', err);
 	
-	// Handle Multer errors
 	if (err instanceof multer.MulterError) {
 		if (err.code === 'LIMIT_UNEXPECTED_FILE') {
 			return sendResponse(res, 400, `Field '${err.field}' tidak diharapkan. Untuk dokumen gunakan field 'file', untuk gambar gunakan field 'photo' atau 'image'`);
@@ -63,7 +61,6 @@ app.use((err, req, res, next) => {
 		return sendResponse(res, 400, `Error upload: ${err.message}`);
 	}
 	
-	// Handle other errors
 	if (err.message) {
 		return sendResponse(res, err.status || 500, err.message);
 	}
