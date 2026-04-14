@@ -39,7 +39,9 @@ async function getActiveTemplate(req, res) {
       year: template.year,
       data: template.sections.map((section) => ({
         Section: `${section.title}`,
+        Title: `${section.title}`,
         type: mapSectionType(section.type, section.title, section.sectionNumber),
+        Headers: section.headers ? section.headers.split(",").map((h) => h.trim()) : [],
         Questions: section.questions.map((q) => {
           const base = { Question: q.text, answer: "", answers: [], photo: "", Ket: "" };
           if (q.type === "QUESTION") return { ...base, answers: q.options.map((o) => o.label) };
@@ -81,6 +83,7 @@ async function createTemplateFromUi(req, res) {
           sectionNumber,
           order: i,
           type: prismaSectionType,
+          headers: sec.headers ? sec.headers.join(",") : null,
           title: String(sec.Section).replace(/^\d+\.\s*/, ""),
         },
       });

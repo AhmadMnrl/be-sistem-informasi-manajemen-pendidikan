@@ -167,6 +167,7 @@ model ReportSection {
   order         Int?
   type          SectionType
   title         String?
+  headers       String?
 
   templateId Int
   template   ReportTemplate @relation(fields: [templateId], references: [id])
