@@ -43,7 +43,7 @@ async function getActiveTemplate(req, res) {
         type: mapSectionType(section.type, section.title, section.sectionNumber),
         Headers: section.headers ? section.headers.split(",").map((h) => h.trim()) : [],
         Questions: section.questions.map((q) => {
-          const base = { Question: q.text, answer: "", answers: [], photo: "", Ket: "" };
+          const base = { Question: q.text, answer: "", answers: [], photo: "", Ket: "", predikat: "" };
           if (q.type === "QUESTION") return { ...base, answers: q.options.map((o) => o.label) };
           if (q.type === "PHOTO") return { ...base, answers: [], photo: "" };
           return { ...base, answers: [] };

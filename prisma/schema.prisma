@@ -219,7 +219,7 @@ model StudentReportAnswer {
   answerText      String?       // untuk FREE_TEXT
   selectedOption  String?       // untuk QUESTION
   photoUrl        String?       // untuk PHOTO
-
+  predikat        String?       // untuk penilaian predikat 
   studentReportId Int
   studentReport   StudentReport @relation(fields: [studentReportId], references: [id])
 

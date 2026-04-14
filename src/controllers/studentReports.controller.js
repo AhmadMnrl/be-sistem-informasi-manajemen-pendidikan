@@ -22,6 +22,7 @@ function flattenUiPayloadToAnswers(uiBody, templateQuestionsIndex) {
         answer: q.answer || null,
         photo: q.photo || null,
         ket: q.Ket || null,
+        predikat: q.predikat || null,
       });
     }
   }
@@ -64,7 +65,7 @@ async function getStudentReportDetail(req, res) {
         type: mapSectionType(section.type, section.title, section.sectionNumber),
         Questions: section.questions.map(q => {
           const ans = q.studentAnswers[0] || {};
-          const base = { Question: q.text, answers: [], answer: '', Ket: ans.ket || '', photo: ans.photoUrl || '' };
+          const base = { Question: q.text, answers: [], answer: '', Ket: ans.ket || '', photo: ans.photoUrl || '', predikat: ans.predikat || '' };
           if (q.type === 'QUESTION') return { ...base, answers: q.options.map(o => o.label), answer: ans.selectedOption || '' };
           if (q.type === 'FREE_TEXT') return { ...base, answers: [], answer: ans.answerText || '' };
           return { ...base, answers: [] };
@@ -114,6 +115,7 @@ async function submitStudentReport(req, res) {
           answerText: question?.type !== 'QUESTION' ? a.answer ?? null : null,
           photoUrl: a.photo ?? null,
           ket: a.ket ?? null,
+          predikat: a.predikat ?? null,
         }
       });
     }
