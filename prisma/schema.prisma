@@ -116,6 +116,7 @@ model Anecdote {
 model Question {
   id        Int       @id @default(autoincrement())
   text      String
+  section   String    @default("Section 1")
   imageUrl  String?
   createdAt DateTime  @default(now())
 
@@ -129,6 +130,7 @@ model Ape {
   condition  String?
   quantity   Int       @default(0)
   location   String?
+  imageUrl   String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -172,6 +174,7 @@ model ReportSection {
   order         Int?
   type          SectionType
   title         String?
+  subtitle      String?
   headers       String?
 
   templateId Int
@@ -204,6 +207,7 @@ model ReportAnswerOption {
 model StudentReport {
   id           Int                  @id @default(autoincrement())
   year         Int
+  tahunAjaran  String?              @map("tahun_ajaran")
   semester     Semester             @default(GANJIL)
   createdAt    DateTime             @default(now())
 

@@ -2,6 +2,7 @@ const { prisma } = require("../prisma");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
 const { getPaginationParams, buildPaginationResponse } = require("../utils/pagination");
+const { buildImagePath, normalizeFilePath } = require("../utils/filePath");
 
 async function listApe(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
@@ -26,8 +27,9 @@ async function listApe(req, res) {
 }
 
 async function createApe(req, res) {
-  const { name, condition, quantity, location } = req.body || {};
+  const { name, condition, quantity, location, imageUrl: imageUrlFromBody } = req.body || {};
   if (!name) return sendResponse(res, 400, "Nama APE wajib");
+  const imageUrl = req.file ? buildImagePath(req.file.filename) : normalizeFilePath(imageUrlFromBody);
   try {
     const created = await prisma.ape.create({
       data: {
@@ -35,6 +37,7 @@ async function createApe(req, res) {
         condition: condition || null,
         quantity: quantity || 0,
         location: location || null,
+        imageUrl,
         // track who created & updated this record
         createdBy: { connect: { id: req.user.id } },
         updatedBy: { connect: { id: req.user.id } },
@@ -60,12 +63,14 @@ async function getApe(req, res) {
 
 async function updateApe(req, res) {
   const id = Number(req.params.id);
-  const { name, condition, quantity, location } = req.body || {};
+  const { name, condition, quantity, location, imageUrl: imageUrlFromBody } = req.body || {};
   const data = {};
   if (name) data.name = name;
   if (condition !== undefined) data.condition = condition || null;
   if (quantity !== undefined) data.quantity = quantity;
   if (location !== undefined) data.location = location || null;
+  if (req.file) data.imageUrl = buildImagePath(req.file.filename);
+  else if (imageUrlFromBody !== undefined) data.imageUrl = normalizeFilePath(imageUrlFromBody);
   // track who performed the update
   data.updatedBy = { connect: { id: req.user.id } };
   try {

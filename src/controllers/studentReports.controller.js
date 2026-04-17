@@ -1,4 +1,5 @@
 const { prisma } = require("../prisma");
+const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
 
 function normalizeSemesterToDb(value) {
@@ -13,6 +14,30 @@ function mapSemesterToUi(value) {
   return value === "GENAP" ? "genap" : "ganjil";
 }
 
+function normalizeTahunAjaranToDb(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+function isValidTahunAjaranFormat(value) {
+  if (!value) return false;
+  return /^(\d{4})\/(\d{4})$/.test(String(value).trim());
+}
+
+function parseYearFromTahunAjaran(value) {
+  if (!value) return null;
+  const match = String(value).match(/(\d{4})\s*\/\s*(\d{4})/);
+  if (!match) return null;
+  return Number(match[2]);
+}
+
+function formatTahunAjaranFromYear(year) {
+  const numericYear = Number(year);
+  if (!Number.isFinite(numericYear)) return null;
+  return `${numericYear - 1}/${numericYear}`;
+}
+
 function mapSectionType(dbType, title, sectionNumber) {
   const isNilai = (title || "").toLowerCase().includes("nilai") || sectionNumber === 0;
   if (isNilai) return "table_text";
@@ -22,6 +47,36 @@ function mapSectionType(dbType, title, sectionNumber) {
     default:
       return "table";
   }
+}
+
+function normalizePhotosToArray(value) {
+  if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+}
+
+function serializePhotosToDb(value) {
+  const photos = normalizePhotosToArray(value);
+  if (photos.length === 0) return null;
+  if (photos.length === 1) return photos[0];
+  return JSON.stringify(photos);
+}
+
+function parsePhotosFromDb(value) {
+  if (!value) return [];
+  if (typeof value !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean);
+  } catch (_) {
+    // ignore and fallback as single url string
+  }
+
+  return [value];
 }
 
 // Flatten payload UI (data/Questions) → answers[] by looking up questionId from active template
@@ -34,7 +89,7 @@ function flattenUiPayloadToAnswers(uiBody, templateQuestionsIndex) {
       answers.push({
         questionId,
         answer: q.answer || null,
-        photo: q.photo || null,
+        photo: q.photos ?? q.photo ?? null,
         ket: q.Ket || null,
         predikat: q.predikat || null,
       });
@@ -43,11 +98,45 @@ function flattenUiPayloadToAnswers(uiBody, templateQuestionsIndex) {
   return answers;
 }
 
+function extractAnswersFromPayload(body, templateQuestionsIndex) {
+  return Array.isArray(body.answers) ? body.answers : flattenUiPayloadToAnswers(body, templateQuestionsIndex);
+}
+
+function normalizeReportInput(body) {
+  const tahunAjaran = normalizeTahunAjaranToDb(body.tahun_ajaran);
+  const parsedYearFromTahunAjaran = parseYearFromTahunAjaran(tahunAjaran);
+  const numericYear = body.year !== undefined && body.year !== null && body.year !== "" ? Number(body.year) : null;
+  const year = Number.isFinite(numericYear) ? numericYear : parsedYearFromTahunAjaran;
+
+  return {
+    studentId: Number(body.studentId),
+    templateId: Number(body.templateId),
+    year,
+    tahunAjaran: tahunAjaran || formatTahunAjaranFromYear(year),
+    semester: normalizeSemesterToDb(body.semester),
+  };
+}
+
+async function buildReportAnswerContext(selectedTemplate) {
+  const index = new Map();
+  const questionTypeById = new Map();
+
+  for (const section of selectedTemplate.sections) {
+    for (const question of section.questions) {
+      index.set(question.text, question.id);
+      questionTypeById.set(question.id, question.type);
+    }
+  }
+
+  return { index, questionTypeById };
+}
+
 async function listStudentReports(req, res) {
   try {
     const studentId = req.query.studentId ? Number(req.query.studentId) : undefined;
     const templateId = req.query.templateId ? Number(req.query.templateId) : undefined;
     const year = req.query.year ? Number(req.query.year) : undefined;
+    const tahunAjaran = req.query.tahun_ajaran ? normalizeTahunAjaranToDb(req.query.tahun_ajaran) : undefined;
     const semester = req.query.semester ? normalizeSemesterToDb(req.query.semester) : undefined;
 
     const reports = await prisma.studentReport.findMany({
@@ -55,6 +144,7 @@ async function listStudentReports(req, res) {
         ...(studentId ? { studentId } : {}),
         ...(templateId ? { templateId } : {}),
         ...(year ? { year } : {}),
+        ...(tahunAjaran ? { tahunAjaran } : {}),
         ...(semester ? { semester } : {}),
       },
       orderBy: { id: "desc" },
@@ -92,10 +182,14 @@ async function listStudentReports(req, res) {
       },
     });
 
-    const normalizedReports = reports.map((r) => ({
-      ...r,
-      semester: mapSemesterToUi(r.semester),
-    }));
+    const normalizedReports = reports.map((r) => {
+      const { tahunAjaran: _tahunAjaran, ...rest } = r;
+      return {
+        ...rest,
+        tahun_ajaran: _tahunAjaran || formatTahunAjaranFromYear(r.year),
+        semester: mapSemesterToUi(r.semester),
+      };
+    });
 
     return sendResponse(res, 200, "Data laporan siswa berhasil diambil", normalizedReports);
   } catch (error) {
@@ -107,6 +201,8 @@ async function listStudentReports(req, res) {
 async function getStudentReportDetail(req, res) {
   try {
     const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
+
     const report = await prisma.studentReport.findUnique({
       where: { id },
       include: {
@@ -131,17 +227,22 @@ async function getStudentReportDetail(req, res) {
     if (!report) return sendResponse(res, 404, "Laporan siswa tidak ditemukan");
 
     const formatted = {
+      templateId: report.templateId,
       title: report.template.title,
       year: report.year,
+      tahun_ajaran: report.tahunAjaran || formatTahunAjaranFromYear(report.year),
       semester: mapSemesterToUi(report.semester),
       studentId: report.studentId,
-      templateId: report.templateId,
       data: report.template.sections.map((section) => ({
-        Section: `${section.sectionNumber}. ${section.title}`,
+        Section: `${section.title}`,
+        Title: `${section.title}`,
+        subtitle: section.subtitle || "",
         type: mapSectionType(section.type, section.title, section.sectionNumber),
+        Headers: section.headers ? section.headers.split(",").map((h) => h.trim()) : [],
         Questions: section.questions.map((q) => {
           const ans = q.studentAnswers[0] || {};
-          const base = { Question: q.text, answers: [], answer: "", Ket: ans.ket || "", photo: ans.photoUrl || "", predikat: ans.predikat || "" };
+          const photos = parsePhotosFromDb(ans.photoUrl);
+          const base = { Question: q.text, answers: [], answer: "", Ket: ans.ket || "", photo: photos[0] || "", photos, predikat: ans.predikat || "" };
           if (q.type === "QUESTION") return { ...base, answers: q.options.map((o) => o.label), answer: ans.selectedOption || "" };
           if (q.type === "FREE_TEXT") return { ...base, answers: [], answer: ans.answerText || "" };
           return { ...base, answers: [] };
@@ -158,42 +259,104 @@ async function getStudentReportDetail(req, res) {
 
 async function submitStudentReport(req, res) {
   try {
-    const { studentId, templateId, year, semester } = req.body;
-    const normalizedSemester = normalizeSemesterToDb(semester);
+    const normalizedInput = normalizeReportInput(req.body);
 
-    // Gunakan template aktif jika templateId tidak dikirim atau ingin force active
-    const activeTemplate = await prisma.reportTemplate.findFirst({
-      where: { isActive: true },
-      include: { sections: { include: { questions: true } } },
-    });
-    if (!activeTemplate) return sendResponse(res, 404, "Template aktif tidak ditemukan");
+    if (!isValidTahunAjaranFormat(normalizedInput.tahunAjaran) || !Number.isInteger(normalizedInput.year)) {
+      return sendResponse(res, 400, "Format tahun_ajaran tidak valid. Gunakan format YYYY/YYYY");
+    }
 
-    const effectiveTemplateId = templateId || activeTemplate.id;
-
-    // Index pertanyaan berdasarkan teks untuk memetakan payload UI ke questionId
-    const index = new Map();
-    for (const s of activeTemplate.sections) for (const q of s.questions) index.set(q.text, q.id);
-
-    const answers = Array.isArray(req.body.answers) ? req.body.answers : flattenUiPayloadToAnswers(req.body, index);
-
-    const studentReport = await prisma.studentReport.create({
-      data: { studentId, templateId: effectiveTemplateId, year, semester: normalizedSemester, createdById: req.user.id },
-    });
-
-    for (const a of answers) {
-      const question = await prisma.reportQuestion.findUnique({ where: { id: a.questionId } });
-      await prisma.studentReportAnswer.create({
-        data: {
-          studentReportId: studentReport.id,
-          questionId: a.questionId,
-          selectedOption: question?.type === "QUESTION" ? (a.answer ?? null) : null,
-          answerText: question?.type !== "QUESTION" ? (a.answer ?? null) : null,
-          photoUrl: a.photo ?? null,
-          ket: a.ket ?? null,
-          predikat: a.predikat ?? null,
-        },
+    // Gunakan template yang dikirim; fallback ke template aktif
+    let selectedTemplate = null;
+    if (normalizedInput.templateId) {
+      selectedTemplate = await prisma.reportTemplate.findUnique({
+        where: { id: normalizedInput.templateId },
+        include: { sections: { include: { questions: true } } },
+      });
+    } else {
+      selectedTemplate = await prisma.reportTemplate.findFirst({
+        where: { isActive: true },
+        include: { sections: { include: { questions: true } } },
       });
     }
+    if (!selectedTemplate) return sendResponse(res, 404, "Template tidak ditemukan");
+
+    const effectiveTemplateId = selectedTemplate.id;
+
+    const { index, questionTypeById } = await buildReportAnswerContext(selectedTemplate);
+
+    const answers = extractAnswersFromPayload(req.body, index);
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return sendResponse(res, 400, "Jawaban tidak boleh kosong");
+    }
+
+    const invalidQuestionIds = answers.map((a) => Number(a.questionId)).filter((qid) => !questionTypeById.has(qid));
+
+    if (invalidQuestionIds.length > 0) {
+      return sendResponse(res, 400, "Ada questionId tidak valid atau bukan milik template", {
+        invalidQuestionIds: [...new Set(invalidQuestionIds)],
+      });
+    }
+
+    const duplicateReport = await prisma.studentReport.findFirst({
+      where: {
+        studentId: normalizedInput.studentId,
+        templateId: effectiveTemplateId,
+        tahunAjaran: normalizedInput.tahunAjaran,
+        semester: normalizedInput.semester,
+      },
+    });
+
+    if (duplicateReport) {
+      return sendResponse(res, 409, "Data tahun ajaran dan semester sudah ada", {
+        id: duplicateReport.id,
+      });
+    }
+
+    const studentReport = await prisma.$transaction(async (tx) => {
+      const createdReport = await tx.studentReport.create({
+        data: {
+          studentId: normalizedInput.studentId,
+          templateId: effectiveTemplateId,
+          year: normalizedInput.year,
+          tahunAjaran: normalizedInput.tahunAjaran,
+          semester: normalizedInput.semester,
+          createdById: req.user.id,
+        },
+      });
+
+      await tx.studentReportAnswer.createMany({
+        data: answers.map((a) => {
+          const qid = Number(a.questionId);
+          const qType = questionTypeById.get(qid);
+          return {
+            studentReportId: createdReport.id,
+            questionId: qid,
+            selectedOption: qType === "QUESTION" ? (a.answer ?? null) : null,
+            answerText: qType !== "QUESTION" ? (a.answer ?? null) : null,
+            photoUrl: serializePhotosToDb(a.photos ?? a.photo ?? null),
+            ket: a.ket ?? null,
+            predikat: a.predikat ?? null,
+          };
+        }),
+      });
+
+      return createdReport;
+    });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "CREATE_STUDENT_REPORT",
+      entity: "StudentReport",
+      entityId: studentReport.id,
+      metadata: {
+        studentId: normalizedInput.studentId,
+        templateId: effectiveTemplateId,
+        year: normalizedInput.year,
+        tahun_ajaran: normalizedInput.tahunAjaran,
+        semester: mapSemesterToUi(studentReport.semester),
+        answersCount: answers.length,
+      },
+    });
 
     return sendResponse(res, 201, "Jawaban siswa berhasil disimpan", { id: studentReport.id, semester: mapSemesterToUi(studentReport.semester) });
   } catch (error) {
@@ -202,8 +365,157 @@ async function submitStudentReport(req, res) {
   }
 }
 
+async function updateStudentReport(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
+
+    const normalizedInput = normalizeReportInput(req.body);
+
+    if (!isValidTahunAjaranFormat(normalizedInput.tahunAjaran) || !Number.isInteger(normalizedInput.year)) {
+      return sendResponse(res, 400, "Format tahun_ajaran tidak valid. Gunakan format YYYY/YYYY");
+    }
+
+    const existingReport = await prisma.studentReport.findUnique({
+      where: { id },
+      include: { template: { include: { sections: { include: { questions: true } } } } },
+    });
+
+    if (!existingReport) return sendResponse(res, 404, "Laporan siswa tidak ditemukan");
+
+    const selectedTemplate = normalizedInput.templateId
+      ? await prisma.reportTemplate.findUnique({
+          where: { id: normalizedInput.templateId },
+          include: { sections: { include: { questions: true } } },
+        })
+      : existingReport.template;
+
+    if (!selectedTemplate) return sendResponse(res, 404, "Template tidak ditemukan");
+
+    const { index, questionTypeById } = await buildReportAnswerContext(selectedTemplate);
+    const answers = extractAnswersFromPayload(req.body, index);
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return sendResponse(res, 400, "Jawaban tidak boleh kosong");
+    }
+
+    const invalidQuestionIds = answers.map((a) => Number(a.questionId)).filter((qid) => !questionTypeById.has(qid));
+    if (invalidQuestionIds.length > 0) {
+      return sendResponse(res, 400, "Ada questionId tidak valid atau bukan milik template", {
+        invalidQuestionIds: [...new Set(invalidQuestionIds)],
+      });
+    }
+
+    const duplicateReport = await prisma.studentReport.findFirst({
+      where: {
+        studentId: normalizedInput.studentId,
+        templateId: selectedTemplate.id,
+        tahunAjaran: normalizedInput.tahunAjaran,
+        semester: normalizedInput.semester,
+        NOT: { id },
+      },
+    });
+
+    if (duplicateReport) {
+      return sendResponse(res, 409, "Data tahun ajaran dan semester sudah ada", {
+        id: duplicateReport.id,
+      });
+    }
+
+    const updatedReport = await prisma.$transaction(async (tx) => {
+      const report = await tx.studentReport.update({
+        where: { id },
+        data: {
+          studentId: normalizedInput.studentId,
+          templateId: selectedTemplate.id,
+          year: normalizedInput.year,
+          tahunAjaran: normalizedInput.tahunAjaran,
+          semester: normalizedInput.semester,
+        },
+      });
+
+      await tx.studentReportAnswer.deleteMany({ where: { studentReportId: report.id } });
+
+      await tx.studentReportAnswer.createMany({
+        data: answers.map((a) => {
+          const qid = Number(a.questionId);
+          const qType = questionTypeById.get(qid);
+          return {
+            studentReportId: report.id,
+            questionId: qid,
+            selectedOption: qType === "QUESTION" ? (a.answer ?? null) : null,
+            answerText: qType !== "QUESTION" ? (a.answer ?? null) : null,
+            photoUrl: serializePhotosToDb(a.photos ?? a.photo ?? null),
+            ket: a.ket ?? null,
+            predikat: a.predikat ?? null,
+          };
+        }),
+      });
+
+      return report;
+    });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "UPDATE_STUDENT_REPORT",
+      entity: "StudentReport",
+      entityId: updatedReport.id,
+      metadata: {
+        studentId: normalizedInput.studentId,
+        templateId: selectedTemplate.id,
+        year: normalizedInput.year,
+        tahun_ajaran: normalizedInput.tahunAjaran,
+        semester: mapSemesterToUi(updatedReport.semester),
+        answersCount: answers.length,
+      },
+    });
+
+    return sendResponse(res, 200, "Jawaban siswa berhasil diperbarui", {
+      id: updatedReport.id,
+      tahun_ajaran: normalizedInput.tahunAjaran,
+      semester: mapSemesterToUi(updatedReport.semester),
+    });
+  } catch (error) {
+    console.error("❌ updateStudentReport error:", error);
+    return sendResponse(res, 500, "Gagal memperbarui jawaban siswa");
+  }
+}
+
+async function deleteStudentReport(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
+
+    const existingReport = await prisma.studentReport.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existingReport) return sendResponse(res, 404, "Laporan siswa tidak ditemukan");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.studentReportAnswer.deleteMany({ where: { studentReportId: id } });
+      await tx.studentReport.delete({ where: { id } });
+    });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "DELETE_STUDENT_REPORT",
+      entity: "StudentReport",
+      entityId: id,
+    });
+
+    return sendResponse(res, 200, "Laporan siswa berhasil dihapus");
+  } catch (error) {
+    console.error("❌ deleteStudentReport error:", error);
+    return sendResponse(res, 500, "Gagal menghapus laporan siswa");
+  }
+}
+
 module.exports = {
   listStudentReports,
   getStudentReportDetail,
   submitStudentReport,
+  updateStudentReport,
+  deleteStudentReport,
 };

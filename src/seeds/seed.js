@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const { prisma } = require("../prisma");
+const { buildImagePath, buildDocumentPath } = require("../utils/filePath");
 
 async function ensureUploads() {
   const dirs = [path.join(process.cwd(), "uploads/images"), path.join(process.cwd(), "uploads/documents")];
@@ -11,8 +12,19 @@ async function ensureUploads() {
   });
 }
 
+function writeDummyIfNotExists(relativePath, content = "dummy") {
+  const abs = path.join(process.cwd(), relativePath.replace(/^\//, ""));
+  if (!fs.existsSync(abs)) fs.writeFileSync(abs, content);
+}
+
+function dateOnlyToUTC(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+}
+
 async function resetData() {
   await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 0`);
+  await prisma.activityLog.deleteMany();
   await prisma.studentReportAnswer.deleteMany();
   await prisma.studentReport.deleteMany();
   await prisma.reportAnswerOption.deleteMany();
@@ -31,204 +43,309 @@ async function resetData() {
 }
 
 async function seedUsers() {
+  const passwordHash = await bcrypt.hash("password123", 10);
   const users = [
-    { name: "Administrator", email: "admin@local.test", role: "ADMIN", password: "admin123" },
-    { name: "Kepala Sekolah", email: "kepsek@local.test", role: "KEPALA_SEKOLAH", password: "kepsek123" },
-    { name: "Guru A", email: "guru1@local.test", role: "GURU", password: "guru12345" },
-    { name: "Guru B", email: "guru2@local.test", role: "GURU", password: "guru12345" },
+    { name: "Administrator", email: "admin@local.test", role: "ADMIN" },
+    { name: "Kepala Sekolah", email: "kepsek@local.test", role: "KEPALA_SEKOLAH" },
+    { name: "Guru A", email: "guru1@local.test", role: "GURU" },
+    { name: "Guru B", email: "guru2@local.test", role: "GURU" },
+    { name: "Guru C", email: "guru3@local.test", role: "GURU" },
+    { name: "Guru D", email: "guru4@local.test", role: "GURU" },
+    { name: "Staf Admin 1", email: "admin1@local.test", role: "ADMIN" },
+    { name: "Staf Admin 2", email: "admin2@local.test", role: "ADMIN" },
+    { name: "Kepsek Cadangan", email: "kepsek2@local.test", role: "KEPALA_SEKOLAH" },
+    { name: "Guru E", email: "guru5@local.test", role: "GURU" },
   ];
-  for (const u of users) {
-    const passwordHash = await bcrypt.hash(u.password, 10);
-    await prisma.user.create({ data: { name: u.name, email: u.email, role: u.role, passwordHash } });
-    console.log("👤 User dibuat:", u.email, `(role: ${u.role})`);
-  }
+
+  await prisma.user.createMany({
+    data: users.map((u) => ({ ...u, passwordHash })),
+  });
+
+  console.log(`👤 User dibuat: ${users.length}`);
+
+  return prisma.user.findMany({ orderBy: { id: "asc" } });
 }
 
 async function seedStudents() {
-  const data = [
-    { name: "Aulia", identifier: "334451001", nisn: "0012345678", className: "A", tahunAjaran: "2024/2025", parentName: "Budi", parentPhone: "08123456789", address: "Jl. Merdeka No. 1" },
-    { name: "Bima", identifier: "334421002", nisn: "0012345679", className: "A", tahunAjaran: "2024/2025", parentName: "Ahmad", parentPhone: "08123456790", address: "Jl. Sudirman No. 2" },
-  ];
-  for (const s of data) {
-    await prisma.student.create({ data: s });
-    console.log("🎓 Siswa dibuat:", s.name);
-  }
+  const data = Array.from({ length: 10 }).map((_, idx) => {
+    const n = idx + 1;
+    return {
+      name: `Siswa ${n}`,
+      identifier: `334450${String(100 + n)}`,
+      nisn: `00987654${String(10 + n)}`,
+      className: n <= 5 ? "A" : "B",
+      tahunAjaran: "2025/2026",
+      parentName: `Orang Tua ${n}`,
+      parentPhone: `081230000${String(n).padStart(2, "0")}`,
+      address: `Jl. Pendidikan No. ${n}`,
+      photoUrl: buildImagePath(`student-${n}.jpg`),
+    };
+  });
+
+  data.forEach((s) => writeDummyIfNotExists(s.photoUrl, `dummy image ${s.name}`));
+  await prisma.student.createMany({ data });
+  console.log(`🎓 Siswa dibuat: ${data.length}`);
+
+  return prisma.student.findMany({ orderBy: { id: "asc" } });
 }
 
-async function seedReports() {
-  const guru = await prisma.user.findFirst({ where: { role: "GURU" } });
-  const students = await prisma.student.findMany({ take: 2 });
-  const items = [
-    { title: "Perkembangan Motorik Halus", description: "Menggunting dengan pola sederhana", studentId: students[0].id },
-    { title: "Perkembangan Sosial", description: "Berbagi mainan dengan teman", studentId: students[1].id },
-  ];
-  for (const r of items) {
-    await prisma.report.create({ data: { ...r, teacherId: guru.id } });
-    console.log("📄 Rapor dibuat:", r.title);
-  }
+async function seedReports(users, students) {
+  const teachers = users.filter((u) => u.role === "GURU");
+  const items = students.slice(0, 10).map((s, idx) => ({
+    title: `Laporan Harian ${s.name}`,
+    description: `Perkembangan ${s.name} pada kegiatan belajar ke-${idx + 1}`,
+    photoUrl: `/uploads/images/report-${idx + 1}.jpg`,
+    date: dateOnlyToUTC(`2026-04-${String(idx + 1).padStart(2, "0")}`),
+    studentId: s.id,
+    teacherId: teachers[idx % teachers.length].id,
+  }));
+
+  items.forEach((r) => writeDummyIfNotExists(r.photoUrl, `dummy image ${r.title}`));
+  await prisma.report.createMany({ data: items });
+  console.log(`📄 Report dibuat: ${items.length}`);
 }
 
-async function seedDocuments() {
-  const uploader = await prisma.user.findFirst({ where: { role: { in: ["ADMIN", "KEPALA_SEKOLAH"] } } });
-  const docs = [
-    { title: "Laporan Mutu 2022", category: "Akreditasi", filePath: "/uploads/documents/laporan-mutu-2022.pdf", documentDate: "2022-06-01" },
-    { title: "Eviden Kegiatan Belajar 2023", category: "Eviden", filePath: "/uploads/documents/eviden-kegiatan-2023.pdf", documentDate: "2023-03-15" },
-  ];
-  for (const d of docs) {
-    const abs = path.join(process.cwd(), d.filePath.replace(/^\//, ""));
-    if (!fs.existsSync(abs)) fs.writeFileSync(abs, "dummy");
-    const docDate = d.documentDate ? new Date(d.documentDate + "T00:00:00.000Z") : null;
-    await prisma.document.create({ data: { title: d.title, category: d.category || null, filePath: d.filePath, uploadedById: uploader.id, documentDate: docDate } });
-    console.log("📎 Dokumen dibuat:", d.title);
-  }
+async function seedDocuments(users) {
+  const uploaders = users.filter((u) => ["ADMIN", "KEPALA_SEKOLAH"].includes(u.role));
+  const categories = ["Laporan", "Administrasi", "Surat", "Dokumentasi", "Evaluasi"];
+
+  const docs = Array.from({ length: 10 }).map((_, idx) => {
+    const n = idx + 1;
+    const filePath = buildDocumentPath(`document-${n}.pdf`);
+    writeDummyIfNotExists(filePath, `dummy document ${n}`);
+    return {
+      title: `Dokumen Sekolah ${n}`,
+      category: categories[idx % categories.length],
+      filePath,
+      documentDate: dateOnlyToUTC(`2026-03-${String(10 + n).padStart(2, "0")}`),
+      uploadedById: uploaders[idx % uploaders.length].id,
+    };
+  });
+
+  await prisma.document.createMany({ data: docs });
+  console.log(`📎 Dokumen dibuat: ${docs.length}`);
 }
 
-async function seedAnecdotes() {
-  const guru = await prisma.user.findFirst({ where: { role: "GURU" } });
-  const items = [{ content: "Hari ini sangat antusias saat bernyanyi." }, { content: "Mau merapikan mainan setelah selesai." }];
-  for (const a of items) {
-    await prisma.anecdote.create({ data: { ...a, teacherId: guru.id } });
-    console.log("🗒️ Anekdot dibuat:", a.content.slice(0, 30) + "...");
-  }
+async function seedAnecdotes(users) {
+  const teachers = users.filter((u) => u.role === "GURU");
+  const categories = ["Sosial Emosional", "Kemandirian", "Bahasa", "Karakter", "Kognitif"];
+
+  const items = Array.from({ length: 10 }).map((_, idx) => {
+    const n = idx + 1;
+    const imageUrl = buildImagePath(`anecdote-${n}.jpg`);
+    writeDummyIfNotExists(imageUrl, `dummy anecdote image ${n}`);
+
+    return {
+      content: `Catatan anekdot ke-${n}`,
+      description: `Siswa menunjukkan perilaku positif pada sesi pembelajaran ke-${n}.`,
+      category: categories[idx % categories.length],
+      date: dateOnlyToUTC(`2026-04-${String(n).padStart(2, "0")}`),
+      imageUrl,
+      teacherId: teachers[idx % teachers.length].id,
+    };
+  });
+
+  await prisma.anecdote.createMany({ data: items });
+  console.log(`🗒️ Anekdot dibuat: ${items.length}`);
 }
 
-async function seedQuestions() {
-  const guru = await prisma.user.findFirst({ where: { role: "GURU" } });
-  const items = [{ text: "Sebutkan warna bendera Indonesia!" }, { text: "Berapakah jumlah jari tangan?" }];
-  for (const q of items) {
-    await prisma.question.create({ data: { text: q.text, teacherId: guru.id } });
-    console.log("❓ Soal dibuat:", q.text);
-  }
+async function seedQuestions(users) {
+  const teachers = users.filter((u) => u.role === "GURU");
+  const sections = ["Section 1", "Section 2", "Section 3"];
+
+  const items = Array.from({ length: 10 }).map((_, idx) => ({
+    text: `Pertanyaan umum ke-${idx + 1}`,
+    section: sections[idx % sections.length],
+    imageUrl: idx % 3 === 0 ? buildImagePath(`question-${idx + 1}.jpg`) : null,
+    teacherId: teachers[idx % teachers.length].id,
+  }));
+
+  items.filter((q) => q.imageUrl).forEach((q) => writeDummyIfNotExists(q.imageUrl, `dummy question image ${q.text}`));
+
+  await prisma.question.createMany({ data: items });
+  console.log(`❓ Question dibuat: ${items.length}`);
 }
 
-async function seedApe() {
-  const user = await prisma.user.findFirst({ where: { role: { in: ["ADMIN", "KEPALA_SEKOLAH"] } } });
-  const items = [
-    { name: "Balok Kayu", condition: "Baik", quantity: 20, location: "Ruang A" },
-    { name: "Puzzle Huruf", condition: "Cukup", quantity: 10, location: "Ruang B" },
-  ];
-  for (const i of items) {
-    await prisma.ape.create({ data: { ...i, updatedById: user.id } });
-    console.log("🧸 APE dibuat:", i.name);
-  }
+async function seedApe(users) {
+  const admins = users.filter((u) => ["ADMIN", "KEPALA_SEKOLAH"].includes(u.role));
+  const conditions = ["Baik", "Cukup", "Perlu Perbaikan"];
+
+  const items = Array.from({ length: 10 }).map((_, idx) => ({
+    name: `APE Item ${idx + 1}`,
+    condition: conditions[idx % conditions.length],
+    quantity: 5 + idx,
+    location: `Ruang ${idx % 2 === 0 ? "A" : "B"}`,
+    createdById: admins[idx % admins.length].id,
+    updatedById: admins[(idx + 1) % admins.length].id,
+  }));
+
+  await prisma.ape.createMany({ data: items });
+  console.log(`🧸 APE dibuat: ${items.length}`);
 }
 
-async function seedReportTemplateAndStudentReport() {
-  const adminOrKepsek = await prisma.user.findFirst({ where: { role: { in: ["ADMIN", "KEPALA_SEKOLAH"] } } });
-  const guru = await prisma.user.findFirst({ where: { role: "GURU" } });
-  const student = await prisma.student.findFirst();
+async function seedTemplateAndStudentReports(users, students) {
+  const creator = users.find((u) => ["ADMIN", "KEPALA_SEKOLAH"].includes(u.role));
+  const teachers = users.filter((u) => u.role === "GURU");
 
   const template = await prisma.reportTemplate.create({
     data: {
-      title: "Template Rapor 2022",
-      year: 2022,
-      createdById: adminOrKepsek.id,
+      title: "Template Rapor Semester Genap 2025/2026",
+      year: 2026,
+      isActive: true,
+      createdById: creator.id,
     },
   });
 
-  const section1 = await prisma.reportSection.create({
-    data: {
-      templateId: template.id,
-      sectionNumber: 1,
-      type: "TABLE",
-      title: "Predikat Kemampuan",
-      order: 1,
-    },
-  });
+  const sections = await Promise.all([
+    prisma.reportSection.create({
+      data: {
+        templateId: template.id,
+        sectionNumber: 1,
+        order: 1,
+        type: "TABLE",
+        title: "Penilaian Predikat",
+        headers: "Question,Predikat",
+      },
+    }),
+    prisma.reportSection.create({
+      data: {
+        templateId: template.id,
+        sectionNumber: 2,
+        order: 2,
+        type: "TEXT",
+        title: "Catatan Naratif",
+        headers: "Question,Jawaban",
+      },
+    }),
+    prisma.reportSection.create({
+      data: {
+        templateId: template.id,
+        sectionNumber: 3,
+        order: 3,
+        type: "MIXED",
+        title: "Dokumentasi Foto",
+        headers: "Question,Foto,Keterangan",
+      },
+    }),
+  ]);
 
-  const q1 = await prisma.reportQuestion.create({
-    data: {
-      sectionId: section1.id,
-      text: "SISWA MAMPU MENJELASKAN TETEK BENGEK",
-      order: 1,
-      type: "QUESTION",
-    },
-  });
+  const questionBlueprints = [
+    { sectionId: sections[0].id, text: "Mengenal huruf vokal", type: "QUESTION" },
+    { sectionId: sections[0].id, text: "Mengenal angka 1-20", type: "QUESTION" },
+    { sectionId: sections[0].id, text: "Mengikuti instruksi guru", type: "QUESTION" },
+    { sectionId: sections[0].id, text: "Kerja sama dengan teman", type: "QUESTION" },
+    { sectionId: sections[0].id, text: "Kemandirian saat tugas", type: "QUESTION" },
+    { sectionId: sections[0].id, text: "Kebiasaan hidup bersih", type: "QUESTION" },
+    { sectionId: sections[1].id, text: "Catatan perkembangan bahasa", type: "FREE_TEXT" },
+    { sectionId: sections[1].id, text: "Catatan perkembangan motorik", type: "FREE_TEXT" },
+    { sectionId: sections[2].id, text: "Foto kegiatan kolase", type: "PHOTO" },
+    { sectionId: sections[2].id, text: "Foto kegiatan olahraga", type: "PHOTO" },
+  ];
 
-  const q2 = await prisma.reportQuestion.create({
-    data: {
-      sectionId: section1.id,
-      text: "SISWA MAMPU berlari 100 meter dalam 1 menit",
-      order: 2,
-      type: "QUESTION",
-    },
-  });
-
-  for (const label of ["SANGAT MAMPU", "MAMPU", "CUKUP MAMPU", "TIDAK MAMPU"]) {
-    await prisma.reportAnswerOption.create({ data: { questionId: q1.id, label } });
-    await prisma.reportAnswerOption.create({ data: { questionId: q2.id, label } });
+  const reportQuestions = [];
+  for (let i = 0; i < questionBlueprints.length; i += 1) {
+    const q = await prisma.reportQuestion.create({
+      data: {
+        sectionId: questionBlueprints[i].sectionId,
+        text: questionBlueprints[i].text,
+        order: i + 1,
+        type: questionBlueprints[i].type,
+      },
+    });
+    reportQuestions.push(q);
   }
 
-  const section2 = await prisma.reportSection.create({
-    data: {
-      templateId: template.id,
-      sectionNumber: 2,
-      type: "TEXT",
-      title: "Deskripsi Perkembangan Motorik Anak",
-      order: 2,
-    },
-  });
+  const optionLabels = ["SANGAT BAIK", "BAIK", "CUKUP", "PERLU BIMBINGAN"];
+  for (const q of reportQuestions.filter((it) => it.type === "QUESTION")) {
+    await prisma.reportAnswerOption.createMany({
+      data: optionLabels.map((label) => ({ questionId: q.id, label })),
+    });
+  }
 
-  const q3 = await prisma.reportQuestion.create({
-    data: {
-      sectionId: section2.id,
-      text: "Deskripsi Perkembangan Motorik Anak :",
-      order: 1,
-      type: "FREE_TEXT",
-    },
-  });
+  const studentReports = [];
+  for (let i = 0; i < 10; i += 1) {
+    const report = await prisma.studentReport.create({
+      data: {
+        studentId: students[i % students.length].id,
+        templateId: template.id,
+        year: 2026,
+        tahunAjaran: "2025/2026",
+        semester: i % 2 === 0 ? "GANJIL" : "GENAP",
+        createdById: teachers[i % teachers.length].id,
+      },
+    });
+    studentReports.push(report);
+  }
 
-  const sr = await prisma.studentReport.create({
-    data: {
-      studentId: student.id,
-      templateId: template.id,
-      year: 2022,
-      semester: "GANJIL",
-      createdById: guru.id,
-    },
-  });
+  for (let i = 0; i < studentReports.length; i += 1) {
+    const sr = studentReports[i];
+    for (const q of reportQuestions) {
+      const base = {
+        studentReportId: sr.id,
+        questionId: q.id,
+        ket: `Keterangan laporan ${i + 1}`,
+        predikat: q.type === "QUESTION" ? optionLabels[(i + q.id) % optionLabels.length] : null,
+      };
 
-  await prisma.studentReportAnswer.create({
-    data: {
-      studentReportId: sr.id,
-      questionId: q1.id,
-      selectedOption: "MAMPU",
-      ket: "Sudah konsisten",
-    },
-  });
+      if (q.type === "QUESTION") {
+        await prisma.studentReportAnswer.create({
+          data: {
+            ...base,
+            selectedOption: optionLabels[(i + q.id) % optionLabels.length],
+          },
+        });
+      } else if (q.type === "FREE_TEXT") {
+        await prisma.studentReportAnswer.create({
+          data: {
+            ...base,
+            answerText: `Narasi perkembangan siswa untuk ${q.text.toLowerCase()}`,
+          },
+        });
+      } else {
+        const photoUrl = buildImagePath(`student-report-${sr.id}-q${q.id}.jpg`);
+        writeDummyIfNotExists(photoUrl, `dummy student report photo ${sr.id}-${q.id}`);
+        await prisma.studentReportAnswer.create({
+          data: {
+            ...base,
+            photoUrl,
+          },
+        });
+      }
+    }
+  }
 
-  await prisma.studentReportAnswer.create({
-    data: {
-      studentReportId: sr.id,
-      questionId: q2.id,
-      selectedOption: "CUKUP MAMPU",
-      ket: "Masih perlu latihan",
-    },
-  });
+  console.log("📘 Template, sections, questions, options, student reports, dan answers berhasil dibuat.");
+}
 
-  await prisma.studentReportAnswer.create({
-    data: {
-      studentReportId: sr.id,
-      questionId: q3.id,
-      answerText: "Sudah mampu berjalan dan melompat dengan baik",
-      ket: "Perlu penguatan koordinasi",
-    },
-  });
+async function seedActivityLogs(users) {
+  const actions = ["LOGIN", "CREATE_STUDENT", "UPDATE_STUDENT", "CREATE_DOCUMENT", "CREATE_ANECDOTE", "CREATE_QUESTION", "CREATE_APE", "CREATE_REPORT", "CREATE_TEMPLATE", "SUBMIT_STUDENT_REPORT"];
 
-  console.log("📘 Template rapor & 1 student report dummy berhasil dibuat.");
+  const logs = Array.from({ length: 10 }).map((_, idx) => ({
+    action: actions[idx],
+    entity: idx % 2 === 0 ? "Student" : "Document",
+    entityId: idx + 1,
+    metadata: { note: `Dummy activity ${idx + 1}`, source: "seed" },
+    userId: users[idx % users.length].id,
+  }));
+
+  await prisma.activityLog.createMany({ data: logs });
+  console.log(`🧾 Activity log dibuat: ${logs.length}`);
 }
 
 async function main() {
   await ensureUploads();
   await resetData();
-  await seedUsers();
-  await seedStudents();
-  await seedReports();
-  await seedDocuments();
-  await seedAnecdotes();
-  await seedQuestions();
-  await seedApe();
-  await seedReportTemplateAndStudentReport();
+
+  const users = await seedUsers();
+  const students = await seedStudents();
+
+  await seedReports(users, students);
+  await seedDocuments(users);
+  await seedAnecdotes(users);
+  await seedQuestions(users);
+  await seedApe(users);
+  await seedTemplateAndStudentReports(users, students);
+  await seedActivityLogs(users);
 }
 
 main()

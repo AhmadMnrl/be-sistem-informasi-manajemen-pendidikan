@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const { sendResponse } = require("./utils/response");
 require("dotenv").config();
 
@@ -26,8 +28,50 @@ app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
 app.use("/uploads", express.static("uploads"));
 
+app.get(/^\/api\/reports\/images\/(.*)$/, (req, res) => {
+  const rawPath = req.params[0] || "";
+  let normalized = String(rawPath).replace(/^\/+/, "");
+
+  if (normalized.startsWith("uploads/images/")) {
+    normalized = normalized.slice("uploads/images/".length);
+  }
+
+  if (normalized.startsWith("images/")) {
+    normalized = normalized.slice("images/".length);
+  }
+
+  const absPath = path.join(process.cwd(), "uploads", "images", normalized);
+  if (!fs.existsSync(absPath)) {
+    return sendResponse(res, 404, "Image tidak ditemukan");
+  }
+
+  return res.sendFile(absPath);
+});
+
+app.get("/api", (req, res) => {
+  res.json({
+    name: "POS PAUD Melati Azzahra API",
+    version: "1.0.0",
+    status: "active",
+    // endpoints: {
+    //   auth: "/api/auth (login, register)",
+    //   users: "/api/users (CRUD users & teacher options)",
+    //   students: "/api/students (CRUD students & options)",
+    //   documents: "/api/documents (CRUD documents with file upload)",
+    //   anecdotes: "/api/anecdotes (CRUD anecdotes with image)",
+    //   reports: "/api/reports (CRUD student reports)",
+    //   questions: "/api/questions (CRUD questions)",
+    //   ape: "/api/ape (CRUD learning tools)",
+    //   logs: "/api/logs (activity logs)",
+    //   search: "/api/search (global search)",
+    //   summary: "/api/summary (summary data)",
+    //   rapor: "/api/rapor (report templates & student reports)",
+    // },
+  });
+});
+
 app.get("/", (req, res) => {
-  res.json({ name: "POS PAUD Melati Azzahra API", version: "1.0.0" });
+  res.redirect("/api");
 });
 
 app.get("/health", (req, res) => {
@@ -54,7 +98,7 @@ app.use((err, req, res, next) => {
 
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_UNEXPECTED_FILE") {
-      return sendResponse(res, 400, `Field '${err.field}' tidak diharapkan. Untuk dokumen gunakan field 'file', untuk gambar gunakan field 'photo' atau 'image'`);
+      return sendResponse(res, 400, `Field '${err.field}' tidak diharapkan. Untuk dokumen gunakan field 'file' atau 'filePath', untuk gambar gunakan field 'photo', 'image', atau 'imageUrl'`);
     }
     if (err.code === "LIMIT_FILE_SIZE") {
       return sendResponse(res, 400, "Ukuran file terlalu besar");

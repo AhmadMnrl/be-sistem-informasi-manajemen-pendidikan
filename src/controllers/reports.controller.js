@@ -1,6 +1,7 @@
 const { prisma } = require("../prisma");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
+const { buildImagePath } = require("../utils/filePath");
 
 async function listReports(req, res) {
   const studentId = Number(req.query.studentId);
@@ -12,7 +13,7 @@ async function listReports(req, res) {
 async function createReport(req, res) {
   const { studentId, title, description, date } = req.body || {};
   if (!studentId || !title) return sendResponse(res, 400, "studentId dan title wajib");
-  const photoUrl = req.file ? `/uploads/images/${req.file.filename}` : null;
+  const photoUrl = req.file ? buildImagePath(req.file.filename) : null;
   const teacherId = req.user.id;
   try {
     const created = await prisma.report.create({ data: { studentId: Number(studentId), title, description: description || null, photoUrl, date: date ? new Date(date) : undefined, teacherId } });
@@ -39,7 +40,7 @@ async function updateReport(req, res) {
   if (title) data.title = title;
   if (description !== undefined) data.description = description || null;
   if (date) data.date = new Date(date);
-  if (req.file) data.photoUrl = `/uploads/images/${req.file.filename}`;
+  if (req.file) data.photoUrl = buildImagePath(req.file.filename);
   try {
     const updated = await prisma.report.update({ where: { id }, data });
     await logActivity({ userId: req.user.id, action: "UPDATE_REPORT", entity: "Report", entityId: updated.id });

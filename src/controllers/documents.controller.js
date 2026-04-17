@@ -1,157 +1,175 @@
-const path = require('path');
-const fs = require('fs');
-const { prisma } = require('../prisma');
-const { logActivity } = require('../utils/activityLog');
-const { sendResponse } = require('../utils/response');
-const { paginate } = require('../utils/pagination');
+const path = require("path");
+const fs = require("fs");
+const { prisma } = require("../prisma");
+const { logActivity } = require("../utils/activityLog");
+const { sendResponse } = require("../utils/response");
+const { paginate } = require("../utils/pagination");
+const { normalizeFilePath, buildDocumentPath } = require("../utils/filePath");
+
+function resolveUploadedDocumentPath(req) {
+  if (req.file?.filename) return buildDocumentPath(req.file.filename);
+
+  const fileField = req.files?.file?.[0];
+  if (fileField?.filename) return buildDocumentPath(fileField.filename);
+
+  const filePathField = req.files?.filePath?.[0];
+  if (filePathField?.filename) return buildDocumentPath(filePathField.filename);
+
+  return null;
+}
 
 // Helper: parse YYYY-MM-DD ke Date dengan waktu 00:00:00
 function parseDateOnly(dateStr) {
-	if (!dateStr) return null;
-	const [y, m, d] = dateStr.split('-').map(Number);
-	return new Date(y, m - 1, d, 0, 0, 0, 0);
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
 }
 
 // Helper: format Date ke YYYY-MM-DD
 function formatDateOnly(date) {
-	if (!date) return null;
-	const d = new Date(date);
-	const y = d.getFullYear();
-	const m = String(d.getMonth() + 1).padStart(2, '0');
-	const day = String(d.getDate()).padStart(2, '0');
-	return `${y}-${m}-${day}`;
+  if (!date) return null;
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // Helper: format document untuk response
 function formatDocument(doc) {
-	return { ...doc, documentDate: formatDateOnly(doc.documentDate) };
+  return { ...doc, documentDate: formatDateOnly(doc.documentDate) };
 }
 
 async function listDocuments(req, res) {
-    const { page = 1, pageSize = 5 } = req.query;
-    const q = req.query.q || '';
+  const { page = 1, pageSize = 5 } = req.query;
+  const q = req.query.q || "";
 
-    try {
-        const where = q ? { title: { contains: q, mode: 'insensitive' } } : undefined;
+  try {
+    const where = q ? { title: { contains: q, mode: "insensitive" } } : undefined;
 
-        const result = await paginate({
-            countFn: () => prisma.document.count({ where }),
-            queryFn: (offset, ps) => prisma.document.findMany({
-                where,
-                orderBy: { id: 'desc' },
-                skip: offset,
-                take: ps,
-            }),
-            page,
-            pageSize,
-        });
+    const result = await paginate({
+      countFn: () => prisma.document.count({ where }),
+      queryFn: (offset, ps) =>
+        prisma.document.findMany({
+          where,
+          orderBy: { id: "desc" },
+          skip: offset,
+          take: ps,
+        }),
+      page,
+      pageSize,
+    });
 
-        return sendResponse(res, 200, 'Data dokumen berhasil diambil', result);
-    } catch (e) {
-        return sendResponse(res, 500, 'Gagal mengambil data dokumen');
-    }
+    return sendResponse(res, 200, "Data dokumen berhasil diambil", result);
+  } catch (e) {
+    return sendResponse(res, 500, "Gagal mengambil data dokumen");
+  }
 }
 
 async function createDocument(req, res) {
-    const { title, category, documentDate } = req.body || {};
-    if (!title) return sendResponse(res, 400, 'Judul dokumen wajib');
-    
-    const fileUrl = req.file ? `/uploads/documents/${req.file.filename}` : null;
-    const uploadedBy = req.user.id;
+  const { title, category, documentDate, filePath: filePathFromBody } = req.body || {};
+  if (!title) return sendResponse(res, 400, "Judul dokumen wajib");
 
-    try {
-        const created = await prisma.document.create({
-            data: {
-                title,
-                category: category || null,
-                documentDate: documentDate ? new Date(documentDate) : new Date(),
-                fileUrl,
-                uploadedBy,
-            }
-        });
-        await logActivity({ userId: req.user.id, action: 'CREATE_DOCUMENT', entity: 'Document', entityId: created.id });
-        return sendResponse(res, 201, 'Dokumen berhasil dibuat', created);
-    } catch (e) {
-        return sendResponse(res, 500, 'Gagal membuat dokumen');
-    }
+  const uploadedPath = resolveUploadedDocumentPath(req);
+  const filePath = uploadedPath || normalizeFilePath(filePathFromBody);
+  if (!filePath) return sendResponse(res, 400, "File wajib diisi (upload field 'file'/'filePath' atau kirim filePath string)");
+  const uploadedById = req.user.id;
+
+  try {
+    const created = await prisma.document.create({
+      data: {
+        title,
+        category: category || null,
+        documentDate: documentDate ? new Date(documentDate) : new Date(),
+        filePath,
+        uploadedById,
+      },
+    });
+    await logActivity({ userId: req.user.id, action: "CREATE_DOCUMENT", entity: "Document", entityId: created.id });
+    return sendResponse(res, 201, "Dokumen berhasil dibuat", created);
+  } catch (e) {
+    return sendResponse(res, 500, "Gagal membuat dokumen");
+  }
 }
 
 async function getDocument(req, res) {
-    const id = Number(req.params.id);
-    try {
-        const document = await prisma.document.findUnique({ where: { id } });
-        if (!document) return sendResponse(res, 404, 'Dokumen tidak ditemukan');
-        return sendResponse(res, 200, 'Data dokumen berhasil diambil', document);
-    } catch (e) {
-        return sendResponse(res, 404, 'Dokumen tidak ditemukan');
-    }
+  const id = Number(req.params.id);
+  try {
+    const document = await prisma.document.findUnique({ where: { id } });
+    if (!document) return sendResponse(res, 404, "Dokumen tidak ditemukan");
+    return sendResponse(res, 200, "Data dokumen berhasil diambil", document);
+  } catch (e) {
+    return sendResponse(res, 404, "Dokumen tidak ditemukan");
+  }
 }
 
 async function updateDocument(req, res) {
-    const id = Number(req.params.id);
-    const { title, category, documentDate } = req.body || {};
-    const data = {};
+  const id = Number(req.params.id);
+  const { title, category, documentDate, filePath: filePathFromBody } = req.body || {};
+  const data = {};
 
-    if (title !== undefined) data.title = title;
-    if (category !== undefined) data.category = category || null;
-    if (documentDate !== undefined) data.documentDate = new Date(documentDate);
-    if (req.file) data.fileUrl = `/uploads/documents/${req.file.filename}`;
+  if (title !== undefined) data.title = title;
+  if (category !== undefined) data.category = category || null;
+  if (documentDate !== undefined) data.documentDate = new Date(documentDate);
+  const uploadedPath = resolveUploadedDocumentPath(req);
+  if (uploadedPath) data.filePath = uploadedPath;
+  else if (filePathFromBody !== undefined) data.filePath = normalizeFilePath(filePathFromBody);
 
-    try {
-        const updated = await prisma.document.update({ where: { id }, data });
-        await logActivity({ userId: req.user.id, action: 'UPDATE_DOCUMENT', entity: 'Document', entityId: updated.id });
-        return sendResponse(res, 200, 'Dokumen berhasil diperbarui', updated);
-    } catch (e) {
-        return sendResponse(res, 404, 'Dokumen tidak ditemukan');
-    }
+  try {
+    const updated = await prisma.document.update({ where: { id }, data });
+    await logActivity({ userId: req.user.id, action: "UPDATE_DOCUMENT", entity: "Document", entityId: updated.id });
+    return sendResponse(res, 200, "Dokumen berhasil diperbarui", updated);
+  } catch (e) {
+    return sendResponse(res, 404, "Dokumen tidak ditemukan");
+  }
 }
 
 async function deleteDocument(req, res) {
-    const id = Number(req.params.id);
-    try {
-        await prisma.document.delete({ where: { id } });
-        await logActivity({ userId: req.user.id, action: 'DELETE_DOCUMENT', entity: 'Document', entityId: id });
-        return sendResponse(res, 200, 'Dokumen berhasil dihapus');
-    } catch (e) {
-        return sendResponse(res, 404, 'Dokumen tidak ditemukan');
-    }
+  const id = Number(req.params.id);
+  try {
+    await prisma.document.delete({ where: { id } });
+    await logActivity({ userId: req.user.id, action: "DELETE_DOCUMENT", entity: "Document", entityId: id });
+    return sendResponse(res, 200, "Dokumen berhasil dihapus");
+  } catch (e) {
+    return sendResponse(res, 404, "Dokumen tidak ditemukan");
+  }
 }
 
 async function downloadDocument(req, res) {
-	const id = Number(req.params.id);
-	const doc = await prisma.document.findUnique({ where: { id } });
-	if (!doc) return sendResponse(res, 404, 'Dokumen tidak ditemukan');
-	const absPath = path.join(process.cwd(), doc.filePath.replace(/^\//, ''));
-	if (!fs.existsSync(absPath)) return sendResponse(res, 404, 'File tidak ditemukan di server');
-	return res.download(absPath, path.basename(absPath));
+  const id = Number(req.params.id);
+  const doc = await prisma.document.findUnique({ where: { id } });
+  if (!doc) return sendResponse(res, 404, "Dokumen tidak ditemukan");
+  const absPath = path.join(process.cwd(), doc.filePath.replace(/^\//, ""));
+  if (!fs.existsSync(absPath)) return sendResponse(res, 404, "File tidak ditemukan di server");
+  return res.download(absPath, path.basename(absPath));
 }
 
 async function viewDocumentFile(req, res) {
-	const id = Number(req.params.id);
-	const doc = await prisma.document.findUnique({ where: { id } });
+  const id = Number(req.params.id);
+  const doc = await prisma.document.findUnique({ where: { id } });
 
-	if (!doc) return sendResponse(res, 404, 'Dokumen tidak ditemukan');
+  if (!doc) return sendResponse(res, 404, "Dokumen tidak ditemukan");
 
-	const absPath = path.join(process.cwd(), doc.filePath.replace(/^\//, ''));
+  const absPath = path.join(process.cwd(), doc.filePath.replace(/^\//, ""));
 
-	if (!fs.existsSync(absPath)) return sendResponse(res, 404, 'File tidak ditemukan di server');
+  if (!fs.existsSync(absPath)) return sendResponse(res, 404, "File tidak ditemukan di server");
 
-	const ext = path.extname(absPath).toLowerCase();
-	const mimeTypes = {
-		'.pdf': 'application/pdf',
-		'.doc': 'application/msword',
-		'.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-		'.xls': 'application/vnd.ms-excel',
-		'.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-		'.txt': 'text/plain',
-	};
+  const ext = path.extname(absPath).toLowerCase();
+  const mimeTypes = {
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".txt": "text/plain",
+  };
 
-	const mimeType = mimeTypes[ext] || 'application/octet-stream';
+  const mimeType = mimeTypes[ext] || "application/octet-stream";
 
-	res.setHeader('Content-Type', mimeType);
-	res.setHeader('Content-Disposition', `inline; filename="${path.basename(absPath)}"`);
+  res.setHeader("Content-Type", mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${path.basename(absPath)}"`);
 
-	return res.sendFile(absPath);
+  return res.sendFile(absPath);
 }
 
 module.exports = { listDocuments, createDocument, getDocument, updateDocument, deleteDocument, downloadDocument, viewDocumentFile };
