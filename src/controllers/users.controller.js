@@ -1,4 +1,5 @@
 const { prisma } = require("../prisma");
+const { Prisma } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
@@ -120,12 +121,47 @@ async function updateUser(req, res) {
 
 async function deleteUser(req, res) {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
+  if (req.user?.id === id) return sendResponse(res, 400, "Tidak dapat menghapus akun sendiri");
+
   try {
-    await prisma.user.delete({ where: { id } });
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return sendResponse(res, 404, "User tidak ditemukan");
+
+    const adminAssignee = await prisma.user.findFirst({
+      where: {
+        role: "ADMIN",
+        id: { not: id },
+      },
+      select: { id: true },
+      orderBy: { id: "asc" },
+    });
+
+    if (!adminAssignee) {
+      return sendResponse(res, 400, "Tidak ada user admin tujuan untuk reassignment");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.report.updateMany({ where: { teacherId: id }, data: { teacherId: adminAssignee.id } });
+      await tx.document.updateMany({ where: { uploadedById: id }, data: { uploadedById: adminAssignee.id } });
+      await tx.anecdote.updateMany({ where: { teacherId: id }, data: { teacherId: adminAssignee.id } });
+      await tx.question.updateMany({ where: { teacherId: id }, data: { teacherId: adminAssignee.id } });
+      await tx.ape.updateMany({ where: { updatedById: id }, data: { updatedById: adminAssignee.id } });
+      await tx.ape.updateMany({ where: { createdById: id }, data: { createdById: adminAssignee.id } });
+      await tx.reportTemplate.updateMany({ where: { createdById: id }, data: { createdById: adminAssignee.id } });
+      await tx.studentReport.updateMany({ where: { createdById: id }, data: { createdById: adminAssignee.id } });
+      await tx.activityLog.deleteMany({ where: { userId: id } });
+      await tx.user.delete({ where: { id } });
+    });
+
     await logActivity({ userId: req.user.id, action: "DELETE_USER", entity: "User", entityId: id });
     return sendResponse(res, 200, "User berhasil dihapus");
   } catch (e) {
-    return sendResponse(res, 404, "User tidak ditemukan");
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+      return sendResponse(res, 409, "User tidak bisa dihapus karena masih digunakan pada data lain");
+    }
+
+    return sendResponse(res, 500, "Gagal menghapus user");
   }
 }
 

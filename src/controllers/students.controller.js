@@ -1,4 +1,5 @@
 const { prisma } = require("../prisma");
+const { Prisma } = require("@prisma/client");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
 const { getPaginationParams, buildPaginationResponse } = require("../utils/pagination");
@@ -53,12 +54,13 @@ async function createStudent(req, res) {
 
 async function getStudent(req, res) {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
   try {
     const student = await prisma.student.findUnique({ where: { id } });
     if (!student) return sendResponse(res, 404, "Siswa tidak ditemukan");
     return sendResponse(res, 200, "Data siswa berhasil diambil", student);
   } catch (e) {
-    return sendResponse(res, 404, "Siswa tidak ditemukan");
+    return sendResponse(res, 500, "Gagal mengambil data siswa");
   }
 }
 
@@ -77,22 +79,44 @@ async function updateStudent(req, res) {
   if (address !== undefined) data.address = address || null;
   if (req.file) data.photoUrl = buildImagePath(req.file.filename);
   try {
+    const existing = await prisma.student.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return sendResponse(res, 404, "Siswa tidak ditemukan");
     const updated = await prisma.student.update({ where: { id }, data });
     await logActivity({ userId: req.user.id, action: "UPDATE_STUDENT", entity: "Student", entityId: updated.id });
     return sendResponse(res, 200, "Siswa berhasil diperbarui", updated);
   } catch (e) {
-    return sendResponse(res, 404, "Siswa tidak ditemukan");
+    return sendResponse(res, 500, "Gagal memperbarui siswa");
   }
 }
 
 async function deleteStudent(req, res) {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
   try {
-    await prisma.student.delete({ where: { id } });
+    const existing = await prisma.student.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return sendResponse(res, 404, "Siswa tidak ditemukan");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.studentReportAnswer.deleteMany({
+        where: {
+          studentReport: {
+            studentId: id,
+          },
+        },
+      });
+
+      await tx.studentReport.deleteMany({ where: { studentId: id } });
+      await tx.report.deleteMany({ where: { studentId: id } });
+      await tx.student.delete({ where: { id } });
+    });
+
     await logActivity({ userId: req.user.id, action: "DELETE_STUDENT", entity: "Student", entityId: id });
     return sendResponse(res, 200, "Siswa berhasil dihapus");
   } catch (e) {
-    return sendResponse(res, 404, "Siswa tidak ditemukan");
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+      return sendResponse(res, 409, "Siswa tidak bisa dihapus karena masih digunakan pada data lain");
+    }
+    return sendResponse(res, 500, "Gagal menghapus siswa");
   }
 }
 

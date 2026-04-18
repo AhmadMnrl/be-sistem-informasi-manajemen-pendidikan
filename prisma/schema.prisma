@@ -228,7 +228,7 @@ model StudentReportAnswer {
   ket             String?
   answerText      String?       // untuk FREE_TEXT
   selectedOption  String?       // untuk QUESTION
-  photoUrl        String?       // untuk PHOTO
+  photoUrl        String?       @db.Text // untuk PHOTO (bisa simpan JSON array url)
   predikat        String?       // untuk penilaian predikat 
   studentReportId Int
   studentReport   StudentReport @relation(fields: [studentReportId], references: [id])

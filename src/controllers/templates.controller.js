@@ -17,6 +17,9 @@ function mapSectionType(dbType, title, sectionNumber) {
 }
 
 async function rebuildTemplateStructure(tx, templateId, data) {
+  await tx.studentReportAnswer.deleteMany({
+    where: { question: { section: { templateId } } },
+  });
   await tx.reportAnswerOption.deleteMany({
     where: { question: { section: { templateId } } },
   });
