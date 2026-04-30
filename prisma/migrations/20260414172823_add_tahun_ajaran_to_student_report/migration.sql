@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `studentreport` ADD COLUMN `tahunAjaran` VARCHAR(191) NULL;
+ALTER TABLE `StudentReport` ADD COLUMN `tahunAjaran` VARCHAR(191) NULL;

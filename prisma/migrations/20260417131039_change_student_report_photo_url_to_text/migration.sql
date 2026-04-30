@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `studentreportanswer` MODIFY `photoUrl` TEXT NULL;
+ALTER TABLE `StudentReportAnswer` MODIFY `photoUrl` TEXT NULL;
