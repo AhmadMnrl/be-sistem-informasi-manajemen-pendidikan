@@ -1,0 +1,2 @@
+-- Placeholder migration retained to repair the migration chain.
+-- The actual lowercase-to-snake_case rename is handled by the later migration.

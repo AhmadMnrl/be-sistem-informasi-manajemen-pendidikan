@@ -48,6 +48,8 @@ model User {
   activityLogs          ActivityLog[]
   createdTemplates      ReportTemplate[]
   createdStudentReports StudentReport[]
+
+  @@map("user")
 }
 
 model Student {
@@ -68,6 +70,7 @@ model Student {
   studentReports StudentReport[]
 
   @@index([identifier])
+  @@map("student")
 }
 
 model Report {
@@ -83,6 +86,8 @@ model Report {
 
   teacherId Int
   teacher   User      @relation("ReportTeacher", fields: [teacherId], references: [id])
+
+  @@map("report")
 }
 
 model Document {
@@ -95,6 +100,8 @@ model Document {
 
   uploadedById Int
   uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+
+  @@map("document")
 }
 
 model Anecdote {
@@ -111,6 +118,7 @@ model Anecdote {
   teacher   User      @relation(fields: [teacherId], references: [id])
 
   @@index([teacherId])
+  @@map("anecdote")
 }
 
 model Question {
@@ -122,6 +130,8 @@ model Question {
 
   teacherId Int
   teacher   User      @relation(fields: [teacherId], references: [id])
+
+  @@map("question")
 }
 
 model Ape {
@@ -138,6 +148,8 @@ model Ape {
   createdBy   User?     @relation("ApeCreatedBy", fields: [createdById], references: [id])
   updatedById Int
   updatedBy   User      @relation("ApeUpdatedBy", fields: [updatedById], references: [id])
+
+  @@map("ape")
 }
 
 model ActivityLog {
@@ -150,6 +162,8 @@ model ActivityLog {
 
   userId Int
   user   User     @relation(fields: [userId], references: [id])
+
+  @@map("activity_log")
 }
 
 model ReportTemplate {
@@ -166,6 +180,7 @@ model ReportTemplate {
   studentReports StudentReport[]
 
   @@index([isActive])
+  @@map("report_template")
 }
 
 model ReportSection {
@@ -181,6 +196,8 @@ model ReportSection {
   template   ReportTemplate @relation(fields: [templateId], references: [id])
 
   questions  ReportQuestion[]
+
+  @@map("report_section")
 }
 
 model ReportQuestion {
@@ -194,6 +211,8 @@ model ReportQuestion {
 
   options    ReportAnswerOption[]
   studentAnswers StudentReportAnswer[]
+
+  @@map("report_question")
 }
 
 model ReportAnswerOption {
@@ -202,6 +221,8 @@ model ReportAnswerOption {
 
   questionId Int
   question   ReportQuestion @relation(fields: [questionId], references: [id])
+
+  @@map("report_answer_option")
 }
 
 model StudentReport {
@@ -221,6 +242,8 @@ model StudentReport {
   createdBy    User                 @relation(fields: [createdById], references: [id])
 
   answers      StudentReportAnswer[]
+
+  @@map("student_report")
 }
 
 model StudentReportAnswer {
@@ -235,4 +258,6 @@ model StudentReportAnswer {
 
   questionId      Int
   question        ReportQuestion @relation(fields: [questionId], references: [id])
+
+  @@map("student_report_answer")
 }

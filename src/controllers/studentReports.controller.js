@@ -261,6 +261,10 @@ async function submitStudentReport(req, res) {
   try {
     const normalizedInput = normalizeReportInput(req.body);
 
+    if (!Number.isInteger(normalizedInput.studentId) || normalizedInput.studentId <= 0) {
+      return sendResponse(res, 400, "studentId tidak valid");
+    }
+
     if (!isValidTahunAjaranFormat(normalizedInput.tahunAjaran) || !Number.isInteger(normalizedInput.year)) {
       return sendResponse(res, 400, "Format tahun_ajaran tidak valid. Gunakan format YYYY/YYYY");
     }
@@ -279,6 +283,17 @@ async function submitStudentReport(req, res) {
       });
     }
     if (!selectedTemplate) return sendResponse(res, 404, "Template tidak ditemukan");
+
+    const existingStudent = await prisma.student.findUnique({
+      where: { id: normalizedInput.studentId },
+      select: { id: true, name: true },
+    });
+
+    if (!existingStudent) {
+      return sendResponse(res, 404, "Siswa tidak ditemukan", {
+        studentId: normalizedInput.studentId,
+      });
+    }
 
     const effectiveTemplateId = selectedTemplate.id;
 
@@ -361,6 +376,13 @@ async function submitStudentReport(req, res) {
     return sendResponse(res, 201, "Jawaban siswa berhasil disimpan", { id: studentReport.id, semester: mapSemesterToUi(studentReport.semester) });
   } catch (error) {
     console.error("❌ submitStudentReport error:", error);
+
+    if (error?.code === "P2003") {
+      return sendResponse(res, 400, "Referensi data tidak valid. Pastikan siswa, template, dan pertanyaan masih tersedia", {
+        constraint: error?.meta?.constraint || null,
+      });
+    }
+
     return sendResponse(res, 500, "Gagal menyimpan jawaban siswa");
   }
 }
@@ -371,6 +393,10 @@ async function updateStudentReport(req, res) {
     if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
 
     const normalizedInput = normalizeReportInput(req.body);
+
+    if (!Number.isInteger(normalizedInput.studentId) || normalizedInput.studentId <= 0) {
+      return sendResponse(res, 400, "studentId tidak valid");
+    }
 
     if (!isValidTahunAjaranFormat(normalizedInput.tahunAjaran) || !Number.isInteger(normalizedInput.year)) {
       return sendResponse(res, 400, "Format tahun_ajaran tidak valid. Gunakan format YYYY/YYYY");
@@ -391,6 +417,17 @@ async function updateStudentReport(req, res) {
       : existingReport.template;
 
     if (!selectedTemplate) return sendResponse(res, 404, "Template tidak ditemukan");
+
+    const existingStudent = await prisma.student.findUnique({
+      where: { id: normalizedInput.studentId },
+      select: { id: true, name: true },
+    });
+
+    if (!existingStudent) {
+      return sendResponse(res, 404, "Siswa tidak ditemukan", {
+        studentId: normalizedInput.studentId,
+      });
+    }
 
     const { index, questionTypeById } = await buildReportAnswerContext(selectedTemplate);
     const answers = extractAnswersFromPayload(req.body, index);
@@ -477,6 +514,13 @@ async function updateStudentReport(req, res) {
     });
   } catch (error) {
     console.error("❌ updateStudentReport error:", error);
+
+    if (error?.code === "P2003") {
+      return sendResponse(res, 400, "Referensi data tidak valid. Pastikan siswa, template, dan pertanyaan masih tersedia", {
+        constraint: error?.meta?.constraint || null,
+      });
+    }
+
     return sendResponse(res, 500, "Gagal memperbarui jawaban siswa");
   }
 }

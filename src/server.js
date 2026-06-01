@@ -4,7 +4,9 @@ const morgan = require("morgan");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const swaggerUi = require("swagger-ui-express");
 const { sendResponse } = require("./utils/response");
+const { swaggerSpec } = require("./docs/swagger.loader");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth.routes");
@@ -77,6 +79,20 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+app.get("/api/docs.json", (req, res) => {
+  res.json(swaggerSpec);
+});
+
+app.use(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customSiteTitle: "SIM Pendidikan API Docs",
+    customCss: ".swagger-ui .topbar { display: none }",
+  }),
+);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);

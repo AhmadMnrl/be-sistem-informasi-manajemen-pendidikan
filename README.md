@@ -3,6 +3,7 @@
 API untuk manajemen data lembaga (users, siswa, rapor, dokumen akreditasi, anekdot/berita harian, soal, APE), autentikasi JWT, RBAC (Admin, Kepala Sekolah, Guru), pencarian, log aktivitas, dan ringkasan statistik.
 
 ## Teknologi
+
 - Node.js + Express.js
 - Prisma ORM + MySQL (Laragon)
 - JWT (jsonwebtoken), bcryptjs
@@ -10,36 +11,50 @@ API untuk manajemen data lembaga (users, siswa, rapor, dokumen akreditasi, anekd
 - Zod (validasi)
 
 ## Persiapan & Menjalankan
-1) Konfigurasi database di `.env` (sudah dibuat):
+
+1. Konfigurasi database di `.env` (sudah dibuat):
+
 ```
 DATABASE_URL="mysql://root:@localhost:3306/pos_paud_melati_azzahra"
 JWT_SECRET="ubah-ini-untuk-produksi"
 ```
-2) Install dependencies:
+
+2. Install dependencies:
+
 ```
 npm install
 ```
-3) Generate client & migrasi (sudah dilakukan otomatis saat setup):
+
+3. Generate client & migrasi (sudah dilakukan otomatis saat setup):
+
 ```
 npx prisma generate
 npx prisma migrate deploy
 ```
-4) Seed data dummy (users, siswa, rapor, dokumen dummy, anekdot, soal, APE):
+
+4. Seed data dummy (users, siswa, rapor, dokumen dummy, anekdot, soal, APE):
+
 ```
 npm run seed
 ```
-5) Jalankan server dev:
+
+5. Jalankan server dev:
+
 ```
 npm run dev
 ```
+
 - Health check: GET http://localhost:3000/health
+- Swagger UI: GET http://localhost:3000/api/docs
 
 Akun dummy:
+
 - Admin: admin@local.test / admin123
 - Kepala Sekolah: kepsek@local.test / kepsek123
 - Guru: guru1@local.test / guru12345 (juga ada guru2)
 
 ## Arsitektur & Struktur Folder
+
 ```
 src/
 	server.js                 # inisialisasi express, routes, error handler
@@ -60,23 +75,27 @@ prisma/
 ```
 
 ## Role & Akses (ringkas)
+
 - Admin: semua fitur, kelola users.
 - Kepala Sekolah: kelola dokumen akreditasi, kelola APE.
 - Guru: kelola anekdot/berita harian, kelola rapor, kelola soal.
 - Semua role dapat membaca data umum (dengan batasan yang sudah di-route).
 
 ## Alur Autentikasi
-1) Login -> POST /api/auth/login (email, password)
-2) Terima `token` JWT -> simpan di client (Authorization: Bearer <token>)
-3) Ambil profil -> GET /api/auth/me
-4) Akses endpoint lain dengan header Authorization Bearer
+
+1. Login -> POST /api/auth/login (email, password)
+2. Terima `token` JWT -> simpan di client (Authorization: Bearer <token>)
+3. Ambil profil -> GET /api/auth/me
+4. Akses endpoint lain dengan header Authorization Bearer
 
 ## Konvensi Upload
+
 - Gambar (siswa, rapor, anekdot, soal): field form-data `photo` atau `image`
 - Dokumen akreditasi: field form-data `file`
 - File disimpan di `uploads/images` dan `uploads/documents`, di-serve via `GET /uploads/...`
 
 ## Validasi & Error Handling
+
 - Validasi input menggunakan Zod pada middleware `validate`
 - Error server di-handle oleh error handler global -> respon 500 generic
 - Error validasi -> 400 dengan detail `errors`
@@ -84,12 +103,20 @@ prisma/
 ---
 
 ## Dokumentasi Endpoint
+
 Autentikasi diperlukan untuk semua endpoint kecuali `/health`. Gunakan header:
+
 ```
 Authorization: Bearer <token>
 ```
 
+Dokumentasi interaktif dan contoh request/response tersedia di:
+
+- http://localhost:3000/api/docs
+- http://localhost:3000/api/docs.json
+
 ### Auth
+
 - POST `/api/auth/login`
   - body: `{ email, password }`
   - respon: `{ token, user }`
@@ -98,6 +125,7 @@ Authorization: Bearer <token>
 - GET `/api/auth/me`
 
 ### Users (Admin)
+
 - GET `/api/users`
 - POST `/api/users` body: `{ name, email, password, role }`
 - GET `/api/users/:id`
@@ -105,6 +133,7 @@ Authorization: Bearer <token>
 - DELETE `/api/users/:id`
 
 ### Students
+
 - GET `/api/students?q=...`
 - POST `/api/students` (multipart form-data): fields siswa + file `photo` opsional
 - GET `/api/students/:id`
@@ -112,6 +141,7 @@ Authorization: Bearer <token>
 - DELETE `/api/students/:id`
 
 ### Reports (Rapor) — Guru/Admin tulis
+
 - GET `/api/reports?studentId=...`
 - POST `/api/reports` (Guru/Admin) form-data: `studentId`, `title`, opsional `description`, `date`, file `photo`
 - GET `/api/reports/:id`
@@ -119,6 +149,7 @@ Authorization: Bearer <token>
 - DELETE `/api/reports/:id` (Guru/Admin)
 
 ### Documents (Akreditasi) — Kepsek/Admin tulis
+
 - GET `/api/documents?q=...&year=2022` atau `?from=YYYY-MM-DD&to=YYYY-MM-DD` (filter berdasarkan `documentDate`)
 - POST `/api/documents` (Kepsek/Admin) form-data: `title`, opsional `category`, opsional `documentDate` (YYYY-MM-DD), file `file`
 - GET `/api/documents/:id`
@@ -127,8 +158,10 @@ Authorization: Bearer <token>
 - GET `/api/documents/:id/download` (unduh file)
 
 Contoh request (POST /api/documents):
+
 - form-data: `title=Laporan Mutu 2022`, `category=Akreditasi`, `documentDate=2022-06-01`, file `file`=PDF
-Contoh response:
+  Contoh response:
+
 ```
 {
   "id": 5,
@@ -142,6 +175,7 @@ Contoh response:
 ```
 
 ### Anecdotes (Guru tulis)
+
 - GET `/api/anecdotes` (semua anekdot; tidak per-student)
 - POST `/api/anecdotes` (Guru) form-data: `content`, opsional `date`, file `image`
 - GET `/api/anecdotes/:id`
@@ -149,6 +183,7 @@ Contoh response:
 - DELETE `/api/anecdotes/:id` (Guru)
 
 ### Questions (Guru tulis)
+
 - GET `/api/questions?q=...`
 - POST `/api/questions` (Guru) form-data: `text`, file `image` opsional
 - GET `/api/questions/:id`
@@ -156,6 +191,7 @@ Contoh response:
 - DELETE `/api/questions/:id` (Guru)
 
 ### APE (Admin/Kepsek)
+
 - GET `/api/ape?q=...`
 - POST `/api/ape` body: `{ name, condition?, quantity?, location? }`
 - GET `/api/ape/:id`
@@ -163,19 +199,24 @@ Contoh response:
 - DELETE `/api/ape/:id`
 
 ### Logs (Admin)
+
 - GET `/api/logs` — 200 log terakhir
 
 ### Search Gabungan
+
 - GET `/api/search?q=...&page=1&pageSize=10` — kembalikan `students`, `documents`, `reports` + total
 
 ### Summary (Ringkasan)
+
 - GET `/api/summary?period=month|day|year` ATAU `?from=YYYY-MM-DD&to=YYYY-MM-DD`
   - respon: `{ period: {start,end}, studentsCount, reportsCount, documentsCount, anecdotesCount }`
 
 ### Templates & Student Reports
+
 - GET `/api/templates` — ambil semua template rapor (array), format sama seperti GET by ID
 - POST `/api/templates` (Admin/Kepsek) — buat template rapor.
   - Contoh payload:
+
 ```
 {
   "title": "Template Rapor 2022",
@@ -205,7 +246,9 @@ Contoh response:
   ]
 }
 ```
+
 - GET `/api/templates` — contoh response (array semua template, format sama dengan GET by ID):
+
 ```
 [
   {
@@ -240,7 +283,9 @@ Contoh response:
   }
 ]
 ```
+
 - GET `/api/templates/:id` — contoh response:
+
 ```
 {
   "id": 1,
@@ -267,8 +312,10 @@ Contoh response:
   ]
 }
 ```
+
 - POST `/api/student-reports` (Guru/Admin) — submit jawaban rapor.
   - Contoh payload:
+
 ```
 {
   "studentId": 1,
@@ -281,11 +328,13 @@ Contoh response:
   ]
 }
 ```
-  - Contoh response: `{ "id": 1 }`
+
+- Contoh response: `{ "id": 1 }`
 
 ---
 
 ## Alur Sistem Singkat
+
 - User login -> dapat JWT -> akses endpoint sesuai role.
 - Aksi penting (login, CRUD) dicatat di `ActivityLog`.
 - Upload file disimpan di `uploads/...` dan pathnya di DB.
@@ -293,27 +342,32 @@ Contoh response:
 - Ringkasan statistik via `/api/summary`.
 
 ## Panduan Menambah Fitur Baru
-1) Definisikan schema data di `prisma/schema.prisma` (jika perlu tabel baru)
-2) Jalankan migrasi:
+
+1. Definisikan schema data di `prisma/schema.prisma` (jika perlu tabel baru)
+2. Jalankan migrasi:
+
 ```
 npx prisma migrate dev --name add_<fitur>
 ```
-3) Buat controller di `src/controllers/<fitur>.controller.js`
-4) Tambah validator Zod (opsional tapi direkomendasikan) di `src/validators/schemas.js`
-5) Buat route di `src/routes/<fitur>.routes.js` yang memanggil controller + middleware (auth/authorize/validate/upload)
-6) Daftarkan route di `src/server.js`
-7) Tambah seed data dummy di `src/seeds/seed.js` bila diperlukan, lalu `npm run seed`
-8) Uji endpoint (Postman/Insomnia) + cek logs
+
+3. Buat controller di `src/controllers/<fitur>.controller.js`
+4. Tambah validator Zod (opsional tapi direkomendasikan) di `src/validators/schemas.js`
+5. Buat route di `src/routes/<fitur>.routes.js` yang memanggil controller + middleware (auth/authorize/validate/upload)
+6. Daftarkan route di `src/server.js`
+7. Tambah seed data dummy di `src/seeds/seed.js` bila diperlukan, lalu `npm run seed`
+8. Uji endpoint (Postman/Insomnia) + cek logs
 
 ## Panduan Memperbaiki Fitur (Bugfix)
-1) Reproduksi error (cek request, payload, role user)
-2) Cek controller terkait di `src/controllers/*`
-3) Cek validasi di `src/validators/schemas.js`
-4) Cek route & middleware (auth/authorize/validate/upload)
-5) Perbaiki, jalankan `npm run dev`, cek ulang
-6) Jika menyangkut data, buat migrasi Prisma dengan nama deskriptif
+
+1. Reproduksi error (cek request, payload, role user)
+2. Cek controller terkait di `src/controllers/*`
+3. Cek validasi di `src/validators/schemas.js`
+4. Cek route & middleware (auth/authorize/validate/upload)
+5. Perbaiki, jalankan `npm run dev`, cek ulang
+6. Jika menyangkut data, buat migrasi Prisma dengan nama deskriptif
 
 ## Konvensi & Best Practices
+
 - Controller ringkas, hindari nested logic dalam
 - Validasi di middleware `validate` (Zod)
 - RBAC via `authorize` di routes
@@ -321,6 +375,7 @@ npx prisma migrate dev --name add_<fitur>
 - Nama field konsisten dengan schema Prisma
 
 ## Catatan Produksi
+
 - Set `JWT_SECRET` kuat
 - Backup MySQL rutin
 - Pertimbangkan penyimpanan file di object storage (S3/MinIO) + CDN

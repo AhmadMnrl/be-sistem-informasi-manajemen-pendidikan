@@ -43,7 +43,7 @@ async function createUser(req, res) {
   const { name, email, password, role } = req.body || {};
 
   if (!name || !email || !password || !role) {
-    return sendResponse(res, 400, "Nama, email, password, dan role wajib");
+    return sendResponse(res, 400, "Nama, email, password, dan role wajib diisi");
   }
 
   try {

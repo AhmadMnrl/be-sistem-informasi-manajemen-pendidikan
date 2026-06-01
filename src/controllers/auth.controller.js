@@ -8,9 +8,9 @@ async function login(req, res) {
   const { email, password } = req.body || {};
   if (!email || !password) return sendResponse(res, 400, "Email dan password wajib");
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return sendResponse(res, 401, "Email tidak ditemukan");
+  if (!user) return sendResponse(res, 401, "Email atau password tidak valid");
   const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return sendResponse(res, 401, "Password salah");
+  if (!ok) return sendResponse(res, 401, "Email atau password tidak valid");
   const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || "dev-secret", { expiresIn: "12h" });
 
   await logActivity({ userId: user.id, action: "LOGIN", entity: "User", entityId: user.id });
