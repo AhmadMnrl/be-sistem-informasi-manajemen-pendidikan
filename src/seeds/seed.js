@@ -22,6 +22,47 @@ function dateOnlyToUTC(dateStr) {
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
 }
 
+async function ensureLowercaseTables() {
+  const renames = [
+    ["ActivityLog", "activity_log"],
+    ["ReportTemplate", "report_template"],
+    ["ReportSection", "report_section"],
+    ["ReportQuestion", "report_question"],
+    ["ReportAnswerOption", "report_answer_option"],
+    ["StudentReport", "student_report"],
+    ["StudentReportAnswer", "student_report_answer"],
+    ["User", "user"],
+    ["Student", "student"],
+    ["Report", "report"],
+    ["Document", "document"],
+    ["Anecdote", "anecdote"],
+    ["Question", "question"],
+    ["Ape", "ape"],
+  ];
+
+  for (const [sourceTable, targetTable] of renames) {
+    const [row] = await prisma.$queryRawUnsafe(
+      `SELECT
+         EXISTS(
+           SELECT 1
+           FROM information_schema.tables
+           WHERE table_schema = DATABASE()
+             AND table_name = '${sourceTable}'
+         ) AS source_exists,
+         EXISTS(
+           SELECT 1
+           FROM information_schema.tables
+           WHERE table_schema = DATABASE()
+             AND table_name = '${targetTable}'
+         ) AS target_exists`
+    );
+
+    if (row?.source_exists && !row?.target_exists) {
+      await prisma.$executeRawUnsafe(`RENAME TABLE \`${sourceTable}\` TO \`${targetTable}\``);
+    }
+  }
+}
+
 async function resetData() {
   await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 0`);
   await prisma.activityLog.deleteMany();
@@ -334,6 +375,7 @@ async function seedActivityLogs(users) {
 
 async function main() {
   await ensureUploads();
+  await ensureLowercaseTables();
   await resetData();
 
   const users = await seedUsers();
