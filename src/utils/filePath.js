@@ -22,6 +22,18 @@ function normalizeFilePath(filePath) {
 /**
  * Build complete file URL dari filename saja
  */
+const BASE_URL = process.env.BASE_URL || "https://api.pospaudmelatiazzahra.com";
+
+function buildImagePath(filename) {
+  if (!filename) return null;
+  return `${BASE_URL}/uploads/images/${filename}`;
+}
+
+function buildDocumentPath(filename) {
+  if (!filename) return null;
+  return `${BASE_URL}/uploads/documents/${filename}`;
+}
+
 function buildImagePath(filename) {
   if (!filename) return null;
   return `/uploads/images/${filename}`;
