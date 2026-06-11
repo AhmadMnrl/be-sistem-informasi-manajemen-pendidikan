@@ -28,7 +28,10 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
+// /uploads → akses langsung (local/dev)
+// /api/uploads → production (reverse proxy biasanya prefix semua request dengan /api)
 app.use("/uploads", express.static("uploads"));
+app.use("/api/uploads", express.static("uploads"));
 
 app.get(/^\/api\/reports\/images\/(.*)$/, (req, res) => {
   const rawPath = req.params[0] || "";
