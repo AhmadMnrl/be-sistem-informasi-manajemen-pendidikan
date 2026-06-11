@@ -19,19 +19,19 @@ function normalizeFilePath(filePath) {
   return filePath.startsWith("/") ? filePath : `/${filePath}`;
 }
 
-/**
- * Build complete file URL dari filename saja
- */
 const BASE_URL = process.env.BASE_URL || "https://api.pospaudmelatiazzahra.com";
 
+/**
+ * Build relative upload path dari filename saja (untuk disimpan di DB / response API)
+ */
 function buildImagePath(filename) {
   if (!filename) return null;
-  return `${BASE_URL}/uploads/images/${filename}`;
+  return `/uploads/images/${filename}`;
 }
 
 function buildDocumentPath(filename) {
   if (!filename) return null;
-  return `${BASE_URL}/uploads/documents/${filename}`;
+  return `/uploads/documents/${filename}`;
 }
 
-module.exports = { normalizeFilePath, buildImagePath, buildDocumentPath };
+module.exports = { BASE_URL, normalizeFilePath, buildImagePath, buildDocumentPath };

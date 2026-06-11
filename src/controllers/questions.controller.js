@@ -1,10 +1,7 @@
 const { prisma } = require("../prisma");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
-
-function buildImagePath(filename) {
-  return filename ? `/uploads/images/${filename}` : null;
-}
+const { buildImagePath, normalizeFilePath } = require("../utils/filePath");
 
 function parseMaybeJson(value) {
   if (typeof value !== "string") return value;
@@ -21,7 +18,7 @@ function normalizeQuestionsPayload(rawQuestions, fallbackImageUrl = null) {
 
   return parsed.map((item) => ({
     text: item?.text,
-    imageUrl: item?.imageUrl ?? fallbackImageUrl ?? null,
+    imageUrl: normalizeFilePath(item?.imageUrl ?? fallbackImageUrl),
   }));
 }
 
@@ -219,7 +216,7 @@ async function createQuestion(req, res) {
       });
     }
 
-    const resolvedImageUrl = uploadedImageUrl || imageUrl || null;
+    const resolvedImageUrl = uploadedImageUrl || normalizeFilePath(imageUrl);
     const created = await prisma.question.create({ data: { text, imageUrl: resolvedImageUrl, section: normalizedSection, teacherId } });
     await logActivity({
       userId: req.user.id,
@@ -249,8 +246,8 @@ async function updateQuestion(req, res) {
   const data = {};
   if (text !== undefined) data.text = text;
   if (section !== undefined) data.section = section;
-  if (imageUrl !== undefined) data.imageUrl = imageUrl;
-  if (req.file) data.imageUrl = `/uploads/images/${req.file.filename}`;
+  if (req.file) data.imageUrl = buildImagePath(req.file.filename);
+  else if (imageUrl !== undefined) data.imageUrl = normalizeFilePath(imageUrl);
   try {
     const updated = await prisma.question.update({ where: { id }, data });
     await logActivity({ userId: req.user.id, action: "UPDATE_QUESTION", entity: "Question", entityId: updated.id });

@@ -1,6 +1,7 @@
 const { prisma } = require("../prisma");
 const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
+const { normalizeFilePath } = require("../utils/filePath");
 
 function normalizeSemesterToDb(value) {
   if (value === undefined || value === null || value === "") return "GANJIL";
@@ -59,7 +60,9 @@ function normalizePhotosToArray(value) {
 }
 
 function serializePhotosToDb(value) {
-  const photos = normalizePhotosToArray(value);
+  const photos = normalizePhotosToArray(value)
+    .map((photo) => normalizeFilePath(photo))
+    .filter(Boolean);
   if (photos.length === 0) return null;
   if (photos.length === 1) return photos[0];
   return JSON.stringify(photos);

@@ -4,6 +4,7 @@ const { uploadImage } = require("../middleware/upload");
 const { validate } = require("../middleware/validate");
 const { studentReportSubmitSchema } = require("../validators/schemas");
 const { listStudentReports, getStudentReportDetail, submitStudentReport, updateStudentReport, deleteStudentReport } = require("../controllers/studentReports.controller");
+const { buildImagePath } = require("../utils/filePath");
 
 const router = express.Router();
 
@@ -102,7 +103,7 @@ function normalizeMultipartBody(req, res, next) {
     for (const file of req.files) {
       const parts = parseMultipartKey(file.fieldname);
       if (parts.length === 0) continue;
-      setNestedValue(normalized, parts, `/uploads/images/${file.filename}`);
+      setNestedValue(normalized, parts, buildImagePath(file.filename));
     }
   }
 
