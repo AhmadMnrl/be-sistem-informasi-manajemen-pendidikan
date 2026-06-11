@@ -34,14 +34,4 @@ function buildDocumentPath(filename) {
   return `${BASE_URL}/uploads/documents/${filename}`;
 }
 
-function buildImagePath(filename) {
-  if (!filename) return null;
-  return `/uploads/images/${filename}`;
-}
-
-function buildDocumentPath(filename) {
-  if (!filename) return null;
-  return `/uploads/documents/${filename}`;
-}
-
 module.exports = { normalizeFilePath, buildImagePath, buildDocumentPath };
