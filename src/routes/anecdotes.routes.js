@@ -13,7 +13,6 @@ router.use(authMiddleware); // Semua role bisa akses
 router.get("/", listAnecdotes);
 router.get("/:id", getAnecdote);
 
-// Semua role bisa write (Admin, Kepsek, Guru)
 const uploadAnecdoteImage = uploadImage.fields(IMAGE_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 })));
 router.post("/", uploadAnecdoteImage, useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: anecdoteCreateSchema }), createAnecdote);
 router.put("/:id", uploadAnecdoteImage, useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: anecdoteUpdateSchema }), updateAnecdote);

@@ -2,7 +2,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const uploadsRoot = path.join(process.cwd(), "uploads");
+const uploadsRoot = process.env.UPLOADS_ROOT || path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
 
 function makeStorage(subdir) {
