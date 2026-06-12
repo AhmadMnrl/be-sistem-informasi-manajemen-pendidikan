@@ -33,6 +33,7 @@ enum Semester {
 model User {
   id           Int      @id @default(autoincrement())
   name         String
+  identityPhotoUrl String?
   email        String   @unique
   passwordHash String
   role         Role

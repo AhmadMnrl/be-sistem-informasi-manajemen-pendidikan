@@ -3,7 +3,8 @@ const { authMiddleware } = require("../middleware/auth");
 const { authorize } = require("../middleware/authorize");
 const { validate } = require("../middleware/validate");
 const { userCreateSchema, userUpdateSchema } = require("../validators/schemas");
-const { listUsers, createUser, getUser, updateUser, deleteUser, getTeachersOptions } = require("../controllers/users.controller");
+const { uploadImage, useFirstUploadedFile, IMAGE_UPLOAD_FIELDS } = require("../middleware/upload");
+const { listUsers, createUser, getUser, updateUser, deleteUser, getTeachersOptions, uploadIdentityPhoto } = require("../controllers/users.controller");
 
 const router = express.Router();
 
@@ -16,8 +17,13 @@ router.get("/options/teachers", getTeachersOptions);
 router.use(authorize("ADMIN"));
 router.get("/", listUsers);
 router.get("/:id", getUser);
-router.post("/", validate({ body: userCreateSchema }), createUser);
-router.put("/:id", validate({ body: userUpdateSchema }), updateUser);
+// Support optional image upload on create/update via multipart/form-data
+const imageFields = IMAGE_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 }));
+router.post("/", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: userCreateSchema }), createUser);
+router.put("/:id", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: userUpdateSchema }), updateUser);
 router.delete("/:id", deleteUser);
+
+// Upload foto identitas. Terima beberapa field gambar umum.
+router.post("/:id/photo", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), uploadIdentityPhoto);
 
 module.exports = router;

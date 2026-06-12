@@ -5,6 +5,8 @@ const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
 const { paginate } = require("../utils/pagination");
 
+const path = require("path");
+
 async function listUsers(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
   const q = req.query.q || "";
@@ -51,8 +53,13 @@ async function createUser(req, res) {
     if (exist) return sendResponse(res, 400, "Email sudah terdaftar");
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const data = { name, email, passwordHash, role };
+    if (req.file && req.file.filename) {
+      data.identityPhotoUrl = `/uploads/images/${req.file.filename}`;
+    }
+
     const created = await prisma.user.create({
-      data: { name, email, passwordHash, role },
+      data,
       select: {
         id: true,
         name: true,
@@ -98,6 +105,7 @@ async function updateUser(req, res) {
   if (email !== undefined) data.email = email;
   if (password !== undefined) data.passwordHash = await bcrypt.hash(password, 10);
   if (role !== undefined) data.role = role;
+  if (req.file && req.file.filename) data.identityPhotoUrl = `/uploads/images/${req.file.filename}`;
 
   try {
     const updated = await prisma.user.update({
@@ -182,4 +190,29 @@ async function getTeachersOptions(req, res) {
   }
 }
 
-module.exports = { listUsers, createUser, getUser, updateUser, deleteUser, getTeachersOptions };
+async function uploadIdentityPhoto(req, res) {
+  const id = Number(req.params.id);
+  if (!req.file) return sendResponse(res, 400, "File foto identitas wajib diupload");
+
+  const filename = req.file.filename;
+  const url = `/uploads/images/${filename}`;
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return sendResponse(res, 404, "User tidak ditemukan");
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { identityPhotoUrl: url },
+      select: { id: true, identityPhotoUrl: true },
+    });
+
+    await logActivity({ userId: req.user.id, action: "UPLOAD_IDENTITY_PHOTO", entity: "User", entityId: id });
+    return sendResponse(res, 200, "Foto identitas berhasil diunggah", updated);
+  } catch (e) {
+    console.error("uploadIdentityPhoto error:", e);
+    return sendResponse(res, 500, "Gagal mengunggah foto identitas");
+  }
+}
+
+module.exports = { listUsers, createUser, getUser, updateUser, deleteUser, getTeachersOptions, uploadIdentityPhoto };
