@@ -135,19 +135,19 @@ async function deleteDocument(req, res) {
   }
 }
 
+const UPLOADS_ROOT = process.env.UPLOADS_ROOT || "/var/www/pospaudmelatiazzahra/uploads";
+
 async function downloadDocument(req, res) {
   const id = Number(req.params.id);
   const doc = await prisma.document.findUnique({ where: { id } });
   if (!doc) return sendResponse(res, 404, "Dokumen tidak ditemukan");
 
-  const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(process.cwd(), "uploads");
   const absPath = path.join(UPLOADS_ROOT, doc.filePath.replace(/^\/uploads\//, ""));
 
   if (!fs.existsSync(absPath)) return sendResponse(res, 404, "File tidak ditemukan di server");
 
   return res.download(absPath, path.basename(absPath));
 }
-
 
 async function viewDocumentFile(req, res) {
   const id = Number(req.params.id);
