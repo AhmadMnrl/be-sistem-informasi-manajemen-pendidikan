@@ -143,6 +143,7 @@ async function downloadDocument(req, res) {
   if (!doc) return sendResponse(res, 404, "Dokumen tidak ditemukan");
 
   const absPath = path.join(UPLOADS_ROOT, doc.filePath.replace(/^\/uploads\//, ""));
+  console.log("Download absPath:", absPath);
 
   if (!fs.existsSync(absPath)) return sendResponse(res, 404, "File tidak ditemukan di server");
 
