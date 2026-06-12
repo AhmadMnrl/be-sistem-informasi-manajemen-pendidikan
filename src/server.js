@@ -7,7 +7,7 @@ const fs = require("fs");
 const swaggerUi = require("swagger-ui-express");
 const { sendResponse } = require("./utils/response");
 const { swaggerSpec } = require("./docs/swagger.loader");
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const authRoutes = require("./routes/auth.routes");
 const usersRoutes = require("./routes/users.routes");
@@ -55,20 +55,7 @@ app.get("/api", (req, res) => {
     name: "POS PAUD Melati Azzahra API",
     version: "1.0.0",
     status: "active",
-    // endpoints: {
-    //   auth: "/api/auth (login, register)",
-    //   users: "/api/users (CRUD users & teacher options)",
-    //   students: "/api/students (CRUD students & options)",
-    //   documents: "/api/documents (CRUD documents with file upload)",
-    //   anecdotes: "/api/anecdotes (CRUD anecdotes with image)",
-    //   reports: "/api/reports (CRUD student reports)",
-    //   questions: "/api/questions (CRUD questions)",
-    //   ape: "/api/ape (CRUD learning tools)",
-    //   logs: "/api/logs (activity logs)",
-    //   search: "/api/search (global search)",
-    //   summary: "/api/summary (summary data)",
-    //   rapor: "/api/rapor (report templates & student reports)",
-    // },
+    uptime: process.uptime(),
   });
 });
 
@@ -97,7 +84,6 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/students", studentsRoutes);
-app.use("/api", studentReportsRoutes);
 app.use("/api/reports", studentReportsRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/documents", documentsRoutes);

@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../../server');
 const { prisma, setupTestDB, cleanupTestDB, closeTestDB } = require('../helpers/db.helper');
-const { hashPassword, generateToken } = require('../helpers/auth.helper');
+const { hashPassword, generateToken, createMockAuthUser } = require('../helpers/auth.helper');
 const { createMockUser } = require('../helpers/fixtures');
 
 describe('AUTH - Login & JWT', () => {
@@ -110,7 +110,7 @@ describe('AUTH - Login & JWT', () => {
           role: 'ADMIN',
         },
       });
-      const token = createMockAuthUser({ id: user.id }).token;
+      const { token } = createMockAuthUser({ id: user.id });
 
       const res = await request(app)
         .post('/api/auth/logout')

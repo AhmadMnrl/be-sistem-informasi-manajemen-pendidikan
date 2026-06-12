@@ -1,6 +1,7 @@
 /**
  * Test fixtures and factory functions
  */
+const { generateToken } = require('./auth.helper');
 
 const createMockStudent = (overrides = {}) => ({
   name: 'Siswa Test 1',
@@ -18,7 +19,7 @@ const createMockStudent = (overrides = {}) => ({
 const createMockUser = (overrides = {}) => ({
   name: 'User Test',
   email: 'user@test.local',
-  passwordHash: '$2a$10$test', // Dummy hash
+  passwordHash: '$2a$10$test',
   role: 'GURU',
   ...overrides,
 });
