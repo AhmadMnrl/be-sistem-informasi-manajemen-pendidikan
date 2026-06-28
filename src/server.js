@@ -18,7 +18,6 @@ const anecdotesRoutes = require("./routes/anecdotes.routes");
 const questionsRoutes = require("./routes/questions.routes");
 const apeRoutes = require("./routes/ape.routes");
 const logsRoutes = require("./routes/logs.routes");
-const searchRoutes = require("./routes/search.routes");
 const summaryRoutes = require("./routes/summary.routes");
 const templateRoutes = require("./routes/templates.routes");
 const studentReportsRoutes = require("./routes/studentReports.routes");
@@ -91,7 +90,6 @@ app.use("/api/anecdotes", anecdotesRoutes);
 app.use("/api/questions", questionsRoutes);
 app.use("/api/ape", apeRoutes);
 app.use("/api/logs", logsRoutes);
-app.use("/api/search", searchRoutes);
 app.use("/api/summary", summaryRoutes);
 app.use("/api/rapor", templateRoutes);
 

@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/templates/active', authMiddleware, getActiveTemplate);
 
 // Buat template dari payload UI (opsional, untuk admin builder)
-router.post('/templates', authMiddleware, validate(templateCreateSchema), createTemplateFromUi);
+router.post('/templates', authMiddleware, validate({ body: templateCreateSchema }), createTemplateFromUi);
 
 // Aktifkan template berdasarkan ID
 router.patch('/templates/:id/activate', authMiddleware, activateTemplate);

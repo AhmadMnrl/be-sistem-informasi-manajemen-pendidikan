@@ -21,7 +21,6 @@ const swaggerSpec = {
     { name: "Questions", description: "Bank soal" },
     { name: "APE", description: "Alat peraga edukatif" },
     { name: "Logs", description: "Log aktivitas" },
-    { name: "Search", description: "Pencarian gabungan" },
     { name: "Summary", description: "Ringkasan statistik" },
     { name: "Templates", description: "Template rapor" },
     { name: "Student Reports", description: "Input dan kelola hasil rapor siswa" },
@@ -789,15 +788,6 @@ const swaggerSpec = {
     },
     "/api/logs": {
       get: { tags: ["Logs"], summary: "Log aktivitas", description: "Admin only: lihat log aktivitas (maks 200). Role: ADMIN.", security: [{ bearerAuth: [] }], responses: { 200: { description: "OK" } } },
-    },
-    "/api/search": {
-      get: {
-        tags: ["Search"],
-        summary: "Pencarian gabungan",
-        security: [{ bearerAuth: [] }],
-        parameters: [{ name: "q", in: "query", required: false, schema: { type: "string" }, example: "alya" }],
-        responses: { 200: { description: "OK" } },
-      },
     },
     "/api/summary": {
       get: {

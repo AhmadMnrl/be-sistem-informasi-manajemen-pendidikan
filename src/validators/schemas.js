@@ -229,6 +229,21 @@ const studentReportSubmitSchema = z
     }
   });
 
+// REPORTS
+const reportCreateSchema = z.object({
+  studentId: z.coerce.number().int().positive("ID Siswa wajib valid"),
+  title: z.string().min(1, "Judul laporan wajib diisi"),
+  description: z.string().optional().nullable(),
+  photoUrl: photoInputSchema,
+  date: dateOnlyOrDateTimeSchema.optional(),
+});
+const reportUpdateSchema = reportCreateSchema.partial();
+
+// SUMMARY
+const summaryQuerySchema = z.object({
+  q: z.string().optional(),
+}).optional();
+
 module.exports = {
   loginSchema,
   registerSchema,
@@ -251,4 +266,8 @@ module.exports = {
   studentReportSubmitSchema,
   sectionTypeEnum,
   questionTypeEnum,
+  reportCreateSchema,
+  reportUpdateSchema,
+  summaryQuerySchema,
 };
+

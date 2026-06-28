@@ -36,7 +36,6 @@ Dampak:
 - `GET|POST|PUT|DELETE /api/anecdotes/*`
 - `GET|POST|PUT|DELETE /api/questions/*`
 - `GET|POST|PUT|DELETE /api/ape/*`
-- `GET /api/search`
 - `GET /api/summary`
 - `GET /api/rapor/templates/active`
 - `POST /api/rapor/templates`

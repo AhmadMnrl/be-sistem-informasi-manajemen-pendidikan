@@ -58,7 +58,6 @@ src/__tests__/
     ├── ape.test.js             # APE (Learning Tools) CRUD tests
     ├── studentReports.test.js  # Student Report tests
     ├── logs.test.js            # Activity Logs tests
-    ├── search.test.js          # Global Search tests
     ├── summary.test.js         # Summary/Dashboard tests
     └── templates.test.js       # Report Templates tests
 ```
@@ -129,7 +128,6 @@ src/__tests__/
 
 ### Additional Tests
 - Logs: Activity log tracking
-- Search: Global search functionality
 - Summary: Dashboard summary data
 - Templates: Report templates CRUD
 
