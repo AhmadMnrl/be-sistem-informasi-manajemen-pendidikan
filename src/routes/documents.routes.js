@@ -16,6 +16,7 @@ router.get("/:id/download", downloadDocument);
 router.get("/:id/view", viewDocumentFile);
 
 // Hanya Admin & Kepsek yang bisa upload/update/delete
+// authorize dulu sebelum upload agar 403 dikirim tanpa memproses file
 // Support FE lama/new: upload key bisa `file` atau `filePath`
 const uploadDocumentFields = uploadDocument.fields(DOCUMENT_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 })));
 

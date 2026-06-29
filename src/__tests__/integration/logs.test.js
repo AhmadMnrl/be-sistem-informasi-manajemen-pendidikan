@@ -11,7 +11,7 @@ const { prisma, setupTestDB, cleanupTestDB, closeTestDB } = require('../helpers/
 const { hashPassword, createMockAuthUser } = require('../helpers/auth.helper');
 
 describe('ACTIVITY LOGS - /api/logs', () => {
-  let adminAuth, guruAuth, adminUser, guruUser;
+  let adminAuth, guruAuth, kepsekAuth, adminUser, guruUser;
 
   beforeAll(async () => {
     await setupTestDB();
@@ -38,8 +38,18 @@ describe('ACTIVITY LOGS - /api/logs', () => {
       },
     });
 
+    const kepsekUser = await prisma.user.create({
+      data: {
+        name: 'Kepsek Test',
+        email: 'kepsek@test.local',
+        passwordHash: await hashPassword('password123'),
+        role: 'KEPALA_SEKOLAH',
+      },
+    });
+
     adminAuth = createMockAuthUser({ id: adminUser.id, role: 'ADMIN' });
     guruAuth = createMockAuthUser({ id: guruUser.id, role: 'GURU' });
+    kepsekAuth = createMockAuthUser({ id: kepsekUser.id, role: 'KEPALA_SEKOLAH' });
   });
 
   afterAll(async () => {
@@ -78,6 +88,15 @@ describe('ACTIVITY LOGS - /api/logs', () => {
       const res = await request(app)
         .get('/api/logs')
         .set('Authorization', `Bearer ${guruAuth.token}`);
+
+      expect(res.statusCode).toBe(403);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    it('should return 403 when KEPALA_SEKOLAH tries to list activity logs', async () => {
+      const res = await request(app)
+        .get('/api/logs')
+        .set('Authorization', `Bearer ${kepsekAuth.token}`);
 
       expect(res.statusCode).toBe(403);
       expect(res.body).toHaveProperty('success', false);
