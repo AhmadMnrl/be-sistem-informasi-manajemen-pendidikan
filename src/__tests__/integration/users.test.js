@@ -353,4 +353,54 @@ describe('USERS - /api/users', () => {
       expect(res.body).toHaveProperty('message');
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // POST /api/users/:id/photo and POST /api/Users/:id/photo
+  // ═══════════════════════════════════════════════════════════════════
+  describe('POST /api/users/:id/photo & /api/Users/:id/photo', () => {
+    it('should return 200 and successfully upload identity photo for ADMIN', async () => {
+      const res = await request(app)
+        .post(`/api/users/${guru.id}/photo`)
+        .set('Authorization', `Bearer ${adminAuth.token}`)
+        .attach('photo', Buffer.from('dummy-image-content'), 'avatar.png');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('status', 200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('message', 'Foto identitas berhasil diunggah');
+      expect(res.body).toHaveProperty('data');
+      
+      const dbUser = await prisma.user.findUnique({ where: { id: guru.id } });
+      expect(dbUser.identityPhotoUrl).not.toBeNull();
+      expect(dbUser.identityPhotoUrl).toContain('/uploads/images/');
+    });
+
+    it('should support capital Users endpoint POST /api/Users/:id/photo', async () => {
+      const res = await request(app)
+        .post(`/api/Users/${guru.id}/photo`)
+        .set('Authorization', `Bearer ${adminAuth.token}`)
+        .attach('photo', Buffer.from('dummy-image-content'), 'avatar.png');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toContain('Foto identitas berhasil diunggah');
+    });
+
+    it('should return 400 if no photo is attached', async () => {
+      const res = await request(app)
+        .post(`/api/users/${guru.id}/photo`)
+        .set('Authorization', `Bearer ${adminAuth.token}`);
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 404 if user not found', async () => {
+      const res = await request(app)
+        .post('/api/users/99999/photo')
+        .set('Authorization', `Bearer ${adminAuth.token}`)
+        .attach('photo', Buffer.from('dummy-image-content'), 'avatar.png');
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
 });
+
