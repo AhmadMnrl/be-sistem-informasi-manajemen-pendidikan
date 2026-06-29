@@ -48,7 +48,7 @@ async function createStudent(req, res) {
     await logActivity({ userId: req.user.id, action: "CREATE_STUDENT", entity: "Student", entityId: created.id });
     return sendResponse(res, 201, "Siswa berhasil dibuat", created);
   } catch (e) {
-    console.error("createStudent error:", e);
+    // console.error("createStudent error:", e);
     return sendResponse(res, 400, "Gagal membuat siswa");
   }
 
