@@ -23,7 +23,9 @@ router.post("/", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPL
 router.put("/:id", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: userUpdateSchema }), updateUser);
 router.delete("/:id", deleteUser);
 
-// Upload foto identitas. Terima beberapa field gambar umum.
-router.post("/:id/photo", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), uploadIdentityPhoto);
+// Upload foto identitas.
+router.post("/:id/photo", uploadImage.any(), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), uploadIdentityPhoto);
+
+
 
 module.exports = router;

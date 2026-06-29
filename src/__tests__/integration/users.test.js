@@ -369,7 +369,7 @@ describe('USERS - /api/users', () => {
       expect(res.body).toHaveProperty('success', true);
       expect(res.body).toHaveProperty('message', 'Foto identitas berhasil diunggah');
       expect(res.body).toHaveProperty('data');
-      
+
       const dbUser = await prisma.user.findUnique({ where: { id: guru.id } });
       expect(dbUser.identityPhotoUrl).not.toBeNull();
       expect(dbUser.identityPhotoUrl).toContain('/uploads/images/');

@@ -42,19 +42,33 @@ function useFirstUploadedFile(fieldNames = []) {
   return (req, res, next) => {
     if (req.file) return next();
 
-    if (!req.files || typeof req.files !== "object") return next();
+    if (!req.files) return next();
 
-    for (const fieldName of fieldNames) {
-      const candidate = req.files[fieldName]?.[0];
-      if (candidate) {
-        req.file = candidate;
-        break;
+    if (Array.isArray(req.files)) {
+      for (const fieldName of fieldNames) {
+        const candidate = req.files.find((f) => f.fieldname === fieldName);
+        if (candidate) {
+          req.file = candidate;
+          break;
+        }
+      }
+      return next();
+    }
+
+    if (typeof req.files === "object") {
+      for (const fieldName of fieldNames) {
+        const candidate = req.files[fieldName]?.[0];
+        if (candidate) {
+          req.file = candidate;
+          break;
+        }
       }
     }
 
     return next();
   };
 }
+
 
 // Error handler untuk multer - harus di tempatkan SETELAH middleware upload
 function handleMulterError(err, req, res, next) {
