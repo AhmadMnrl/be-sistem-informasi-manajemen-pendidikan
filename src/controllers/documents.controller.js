@@ -173,7 +173,8 @@ async function deleteDocument(req, res) {
   }
 }
 
-const UPLOADS_ROOT = process.env.UPLOADS_ROOT || "/var/www/pospaudmelatiazzahra/uploads";
+
+const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(process.cwd(), "uploads");
 
 async function downloadDocument(req, res) {
   const id = Number(req.params.id);
