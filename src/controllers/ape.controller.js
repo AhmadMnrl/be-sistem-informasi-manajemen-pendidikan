@@ -7,13 +7,32 @@ const { buildImagePath, normalizeFilePath } = require("../utils/filePath");
 async function listApe(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
   const { page: p, pageSize: ps } = getPaginationParams(page, pageSize);
+
   const q = req.query.q || "";
+  const name = req.query.name;
+  const condition = req.query.condition;
+  const quantityFrom = req.query.quantityFrom;
+  const quantityTo = req.query.quantityTo;
+  const location = req.query.location;
 
   try {
-    const where = q ? { name: { contains: q, mode: "insensitive" } } : undefined;
-    const totalItems = await prisma.ape.count({ where });
+    const where = {
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(name && String(name).trim() ? { name: { contains: String(name).trim(), mode: "insensitive" } } : {}),
+      ...(condition && String(condition).trim() ? { condition: { equals: String(condition).trim() } } : {}),
+      ...(location && String(location).trim() ? { location: { equals: String(location).trim() } } : {}),
+      ...((quantityFrom || quantityTo) ? {
+        quantity: {
+          ...(quantityFrom !== undefined && quantityFrom !== "" ? { gte: Number(quantityFrom) } : {}),
+          ...(quantityTo !== undefined && quantityTo !== "" ? { lte: Number(quantityTo) } : {}),
+        },
+      } : {}),
+    };
+
+    const whereFinal = Object.keys(where).length ? where : undefined;
+    const totalItems = await prisma.ape.count({ where: whereFinal });
     const ape = await prisma.ape.findMany({
-      where,
+      where: whereFinal,
       orderBy: { id: "desc" },
       skip: (p - 1) * ps,
       take: ps,

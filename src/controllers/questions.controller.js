@@ -65,9 +65,22 @@ async function listQuestions(req, res) {
 async function listQuestionSections(req, res) {
   try {
     const q = req.query.q || "";
+    const section = req.query.section;
+    const teacherId = req.query.teacherId;
+    const type = req.query.type;
+
+    const where = {
+      ...(q ? { text: { contains: q, mode: "insensitive" } } : {}),
+      ...(section && String(section).trim() ? { section: { equals: String(section).trim() } } : {}),
+      ...(teacherId ? { teacherId: Number(teacherId) } : {}),
+      ...(type && String(type).trim() ? { type: { equals: String(type).trim() } } : {}),
+    };
+
+    const whereFinal = Object.keys(where).length ? where : undefined;
+
     const sections = await prisma.question.groupBy({
       by: ["section"],
-      where: q ? { text: { contains: q, mode: "insensitive" } } : undefined,
+      where: whereFinal,
       _min: { id: true },
       _count: { id: true },
       orderBy: { _min: { id: "desc" } },

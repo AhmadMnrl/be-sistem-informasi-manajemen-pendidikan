@@ -8,9 +8,30 @@ async function listAnecdotes(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
   const { page: p, pageSize: ps } = getPaginationParams(page, pageSize);
 
+  const q = req.query.q || "";
+  const category = req.query.category;
+  const teacherId = req.query.teacherId;
+  const dateFrom = req.query.dateFrom;
+  const dateTo = req.query.dateTo;
+
   try {
-    const totalItems = await prisma.anecdote.count();
+    const where = {
+      ...(q ? { content: { contains: q, mode: "insensitive" } } : {}),
+      ...(category && String(category).trim() ? { category: { equals: String(category).trim() } } : {}),
+      ...(teacherId ? { teacherId: Number(teacherId) } : {}),
+      ...((dateFrom || dateTo) ? {
+        date: {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo ? { lte: new Date(dateTo) } : {}),
+        },
+      } : {}),
+    };
+
+    const whereFinal = Object.keys(where).length ? where : undefined;
+
+    const totalItems = await prisma.anecdote.count({ where: whereFinal });
     const anecdotes = await prisma.anecdote.findMany({
+      where: whereFinal,
       orderBy: { id: "desc" },
       skip: (p - 1) * ps,
       take: ps,

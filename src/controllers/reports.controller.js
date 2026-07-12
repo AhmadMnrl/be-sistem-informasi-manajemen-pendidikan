@@ -4,9 +4,26 @@ const { sendResponse } = require("../utils/response");
 const { buildImagePath } = require("../utils/filePath");
 
 async function listReports(req, res) {
-  const studentId = Number(req.query.studentId);
-  const where = studentId ? { studentId } : undefined;
-  const reports = await prisma.report.findMany({ where, orderBy: { id: "desc" } });
+  const studentId = req.query.studentId ? Number(req.query.studentId) : undefined;
+  const teacherId = req.query.teacherId ? Number(req.query.teacherId) : undefined;
+  const title = req.query.title;
+  const dateFrom = req.query.dateFrom;
+  const dateTo = req.query.dateTo;
+
+  const where = {
+    ...(studentId ? { studentId } : {}),
+    ...(teacherId ? { teacherId } : {}),
+    ...(title && String(title).trim() ? { title: { contains: String(title).trim(), mode: "insensitive" } } : {}),
+    ...((dateFrom || dateTo) ? {
+      date: {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo) } : {}),
+      },
+    } : {}),
+  };
+
+  const whereFinal = Object.keys(where).length ? where : undefined;
+  const reports = await prisma.report.findMany({ where: whereFinal, orderBy: { id: "desc" } });
   return sendResponse(res, 200, "Data rapor berhasil diambil", reports);
 }
 
