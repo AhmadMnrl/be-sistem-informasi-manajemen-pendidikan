@@ -159,6 +159,13 @@ const templateSectionSchema = z.object({
   Section: z.union([z.string(), z.number()]),
   subtitle: z.string().optional().nullable(),
   type: sectionTypeEnum,
+
+  // UI sering mengirim headers predikat untuk kolom tabel
+  // Bisa berupa string (CSV) atau array string
+  Headers: z.union([z.string(), z.array(z.string())]).optional().nullable(),
+  // alias (jika front-end mengirim lowercase)
+  headers: z.union([z.string(), z.array(z.string())]).optional().nullable(),
+
   Questions: z.array(templateQuestionSchema).min(1),
 });
 const templateCreateSchema = z.object({

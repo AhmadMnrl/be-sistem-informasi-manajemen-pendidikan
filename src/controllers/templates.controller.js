@@ -33,9 +33,42 @@ async function rebuildTemplateStructure(tx, templateId, data) {
   for (let i = 0; i < data.length; i++) {
     const sec = data[i];
     const sectionNumber = Number(String(sec.Section).split(".")[0]) || i;
+
+
     let prismaSectionType = "TABLE";
     if (sec.type === "text") prismaSectionType = "TEXT";
     else if (sec.type === "table_text") prismaSectionType = "MIXED";
+
+    const sectionHeaders = (() => {
+      const h =
+        sec.Headers ??
+        sec.headers ??
+        sec.header ??
+        sec.Header ??
+        sec.HEADER;
+
+      if (h === undefined || h === null) return null;
+
+      if (Array.isArray(h)) {
+        const normalized = h
+          .map((x) => (x === undefined || x === null ? "" : String(x).trim()))
+          .filter(Boolean);
+        return normalized.length ? normalized.join(",") : null;
+      }
+
+      if (typeof h === "string") {
+        const trimmed = h.trim();
+        if (!trimmed) return null;
+        const normalized = trimmed
+          .split(/\s*,\s*/)
+          .map((x) => x.trim())
+          .filter(Boolean);
+        return normalized.length ? normalized.join(",") : null;
+      }
+
+      const asString = String(h).trim();
+      return asString ? asString : null;
+    })();
 
     const section = await tx.reportSection.create({
       data: {
@@ -43,7 +76,7 @@ async function rebuildTemplateStructure(tx, templateId, data) {
         sectionNumber,
         order: i,
         type: prismaSectionType,
-        headers: sec.headers ? sec.headers.join(",") : null,
+        headers: sectionHeaders,
         title: String(sec.Section).replace(/^\d+\.\s*/, ""),
         subtitle: sec.subtitle ?? null,
       },
@@ -113,7 +146,6 @@ async function getActiveTemplate(req, res) {
   }
 }
 
-// Create template baru → nonaktifkan yang lama, aktifkan yang baru
 async function createTemplateFromUi(req, res) {
   try {
     const { title, year, data } = req.body;
@@ -178,7 +210,6 @@ async function createTemplateFromUi(req, res) {
   }
 }
 
-// Optional: endpoint untuk mengaktifkan template tertentu (toggle aktif)
 async function activateTemplate(req, res) {
   try {
     const id = Number(req.params.id);

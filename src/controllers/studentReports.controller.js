@@ -76,13 +76,11 @@ function parsePhotosFromDb(value) {
     const parsed = JSON.parse(value);
     if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean);
   } catch (_) {
-    // ignore and fallback as single url string
   }
 
   return [value];
 }
 
-// Flatten payload UI (data/Questions) → answers[] by looking up questionId from active template
 function flattenUiPayloadToAnswers(uiBody, templateQuestionsIndex) {
   const answers = [];
   for (const section of uiBody.data || []) {
@@ -142,6 +140,11 @@ async function listStudentReports(req, res) {
     const tahunAjaran = req.query.tahun_ajaran ? normalizeTahunAjaranToDb(req.query.tahun_ajaran) : undefined;
     const semester = req.query.semester ? normalizeSemesterToDb(req.query.semester) : undefined;
 
+    const studentName = req.query.studentName ? String(req.query.studentName).trim() : undefined;
+    const className = req.query.className ? String(req.query.className).trim() : undefined;
+    const nisn = req.query.nisn ? String(req.query.nisn).trim() : undefined;
+    const identifier = req.query.identifier ? String(req.query.identifier).trim() : undefined;
+
     const reports = await prisma.studentReport.findMany({
       where: {
         ...(studentId ? { studentId } : {}),
@@ -149,6 +152,16 @@ async function listStudentReports(req, res) {
         ...(year ? { year } : {}),
         ...(tahunAjaran ? { tahunAjaran } : {}),
         ...(semester ? { semester } : {}),
+        ...(studentName || className || nisn || identifier
+          ? {
+              student: {
+                ...(studentName ? { name: { contains: studentName, mode: "insensitive" } } : {}),
+                ...(className ? { className: { contains: className, mode: "insensitive" } } : {}),
+                ...(nisn ? { nisn: { equals: nisn, mode: "insensitive" } } : {}),
+                ...(identifier ? { identifier: { contains: identifier, mode: "insensitive" } } : {}),
+              },
+            }
+          : {}),
       },
       orderBy: { id: "desc" },
       include: {
@@ -567,6 +580,11 @@ async function downloadStudentReportsXlsx(req, res) {
     const tahunAjaran = req.query.tahun_ajaran ? normalizeTahunAjaranToDb(req.query.tahun_ajaran) : undefined;
     const semester = req.query.semester ? normalizeSemesterToDb(req.query.semester) : undefined;
 
+    const studentName = req.query.studentName ? String(req.query.studentName).trim() : undefined;
+    const className = req.query.className ? String(req.query.className).trim() : undefined;
+    const nisn = req.query.nisn ? String(req.query.nisn).trim() : undefined;
+    const identifier = req.query.identifier ? String(req.query.identifier).trim() : undefined;
+
     const reports = await prisma.studentReport.findMany({
       where: {
         ...(studentId ? { studentId } : {}),
@@ -574,6 +592,16 @@ async function downloadStudentReportsXlsx(req, res) {
         ...(year ? { year } : {}),
         ...(tahunAjaran ? { tahunAjaran } : {}),
         ...(semester ? { semester } : {}),
+        ...(studentName || className || nisn || identifier
+          ? {
+              student: {
+                ...(studentName ? { name: { contains: studentName, mode: "insensitive" } } : {}),
+                ...(className ? { className: { contains: className, mode: "insensitive" } } : {}),
+                ...(nisn ? { nisn: { equals: nisn, mode: "insensitive" } } : {}),
+                ...(identifier ? { identifier: { contains: identifier, mode: "insensitive" } } : {}),
+              },
+            }
+          : {}),
       },
       orderBy: { id: "desc" },
       include: {
