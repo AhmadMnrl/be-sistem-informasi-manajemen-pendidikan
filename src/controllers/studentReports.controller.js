@@ -155,10 +155,10 @@ async function listStudentReports(req, res) {
         ...(studentName || className || nisn || identifier
           ? {
               student: {
-                ...(studentName ? { name: { contains: studentName, mode: "insensitive" } } : {}),
-                ...(className ? { className: { contains: className, mode: "insensitive" } } : {}),
-                ...(nisn ? { nisn: { equals: nisn, mode: "insensitive" } } : {}),
-                ...(identifier ? { identifier: { contains: identifier, mode: "insensitive" } } : {}),
+                ...(studentName ? { name: { contains: studentName } } : {}),
+                ...(className ? { className: { contains: className } } : {}),
+                ...(nisn ? { nisn } : {}),
+                ...(identifier ? { identifier: { contains: identifier } } : {}),
               },
             }
           : {}),
