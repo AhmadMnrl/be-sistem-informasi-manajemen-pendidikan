@@ -108,7 +108,7 @@ async function getActiveTemplate(req, res) {
 
     return sendResponse(res, 200, "Data template aktif berhasil diambil", formatted);
   } catch (error) {
-    console.error("❌ getActiveTemplate error:", error);
+    console.error("getActiveTemplate error:", error);
     return sendResponse(res, 500, "Gagal mengambil template aktif");
   }
 }
@@ -173,7 +173,7 @@ async function createTemplateFromUi(req, res) {
 
     return sendResponse(res, 201, "Template baru dibuat dan diaktifkan", { id: created.id, isActive: true, mode: "create" });
   } catch (error) {
-    console.error("❌ createTemplateFromUi error:", error);
+    console.error("createTemplateFromUi error:", error);
     return sendResponse(res, 500, "Gagal membuat template");
   }
 }
@@ -198,7 +198,7 @@ async function activateTemplate(req, res) {
 
     return sendResponse(res, 200, "Template diaktifkan", { id: updated.id, isActive: true });
   } catch (error) {
-    console.error("❌ activateTemplate error:", error);
+    console.error("ActivateTemplate error:", error);
     return sendResponse(res, 500, "Gagal mengaktifkan template");
   }
 }

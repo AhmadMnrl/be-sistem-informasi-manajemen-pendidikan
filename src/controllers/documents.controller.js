@@ -44,14 +44,49 @@ async function listDocuments(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
   const q = req.query.q || "";
 
+  // filter: type/category + documentDate
+  const type = req.query.type ?? req.query.category;
+  const documentDateFrom = req.query.documentDateFrom;
+  const documentDateTo = req.query.documentDateTo;
+  const documentDate = req.query.documentDate;
+
   try {
-    const where = q ? { title: { contains: q, mode: "insensitive" } } : undefined;
+    const where = {
+      ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
+      ...(type && String(type).trim()
+        ? {
+            category: String(type).trim(),
+          }
+        : {}),
+      ...(documentDate
+        ? {
+            documentDate: {
+              gte: parseDateOnly(documentDate),
+              lt: new Date(parseDateOnly(documentDate).getTime() + 24 * 60 * 60 * 1000),
+            },
+          }
+        : {}),
+      ...(!documentDate && (documentDateFrom || documentDateTo)
+        ? {
+            documentDate: {
+              ...(documentDateFrom ? { gte: parseDateOnly(documentDateFrom) } : {}),
+              ...(documentDateTo
+                ? {
+                    lt: new Date(parseDateOnly(documentDateTo).getTime() + 24 * 60 * 60 * 1000),
+                  }
+                : {}),
+            },
+          }
+        : {}),
+    };
+
+    const whereFinal = Object.keys(where).length ? where : undefined;
 
     const result = await paginate({
-      countFn: () => prisma.document.count({ where }),
+      countFn: () => prisma.document.count({ where: whereFinal }),
       queryFn: (offset, ps) =>
         prisma.document.findMany({
-          where,
+          where: whereFinal,
           orderBy: { id: "desc" },
           skip: offset,
           take: ps,
@@ -60,7 +95,10 @@ async function listDocuments(req, res) {
       pageSize,
     });
 
-    return sendResponse(res, 200, "Data dokumen berhasil diambil", result);
+    return sendResponse(res, 200, "Data dokumen berhasil diambil", {
+      ...result,
+      data: result.data?.map((d) => formatDocument(d)),
+    });
   } catch (e) {
     return sendResponse(res, 500, "Gagal mengambil data dokumen");
   }

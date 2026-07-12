@@ -5,16 +5,34 @@ const { sendResponse } = require("../utils/response");
 const { getPaginationParams, buildPaginationResponse } = require("../utils/pagination");
 const { buildImagePath } = require("../utils/filePath");
 
+function normalizeAliasFilters(query) {
+  const className = query.className ?? query.kelas ?? undefined;
+  const tahunAjaran = query.tahunAjaran ?? query.tahun_ajaran ?? undefined;
+
+  return {
+    q: query.q ?? "",
+    className: className && String(className).trim() ? String(className).trim() : undefined,
+    tahunAjaran:
+      tahunAjaran && String(tahunAjaran).trim() ? String(tahunAjaran).trim() : undefined,
+  };
+}
+
 async function listStudents(req, res) {
   const { page = 1, pageSize = 5 } = req.query;
   const { page: p, pageSize: ps } = getPaginationParams(page, pageSize);
-  const q = req.query.q || "";
+
+  const { q, className, tahunAjaran } = normalizeAliasFilters(req.query || {});
 
   try {
-    const where = q ? { name: { contains: q, mode: "insensitive" } } : undefined;
-    const totalItems = await prisma.student.count({ where });
+    const where = {
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(className ? { className: { equals: className } } : {}),
+      ...(tahunAjaran ? { tahunAjaran: { equals: tahunAjaran } } : {}),
+    };
+
+    const totalItems = await prisma.student.count({ where: Object.keys(where).length ? where : undefined });
     const students = await prisma.student.findMany({
-      where,
+      where: Object.keys(where).length ? where : undefined,
       orderBy: { id: "desc" },
       skip: (p - 1) * ps,
       take: ps,
@@ -39,7 +57,7 @@ async function createStudent(req, res) {
         nisn: nisn || null,
         className: className || null,
         tahunAjaran: tahunAjaran || null,
-        parentName: parentName || null,
+        parentanme: parentName || null,
         parentPhone: parentPhone || null,
         address: address || null,
         photoUrl,
@@ -122,6 +140,71 @@ async function deleteStudent(req, res) {
   }
 }
 
+async function downloadStudentsXlsx(req, res) {
+  try {
+    const { q, className, tahunAjaran } = normalizeAliasFilters(req.query || {});
+
+    const where = {
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(className ? { className: { equals: className } } : {}),
+      ...(tahunAjaran ? { tahunAjaran: { equals: tahunAjaran } } : {}),
+    };
+
+    const students = await prisma.student.findMany({
+      where: Object.keys(where).length ? where : undefined,
+      orderBy: { id: "desc" },
+    });
+
+    const ExcelJS = require("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Students");
+
+    sheet.columns = [
+      { header: "ID", key: "id", width: 8 },
+      { header: "Nama", key: "name", width: 25 },
+      { header: "Identifier", key: "identifier", width: 20 },
+      { header: "NISN", key: "nisn", width: 15 },
+      { header: "Kelas", key: "className", width: 15 },
+      { header: "Tahun Ajaran", key: "tahunAjaran", width: 18 },
+      { header: "Nama Orang Tua", key: "parentName", width: 20 },
+      { header: "No. HP", key: "parentPhone", width: 15 },
+      { header: "Alamat", key: "address", width: 30 },
+      { header: "Foto URL", key: "photoUrl", width: 30 },
+    ];
+
+    sheet.getRow(1).font = { bold: true };
+
+    for (const s of students) {
+      sheet.addRow({
+        id: s.id,
+        name: s.name,
+        identifier: s.identifier,
+        nisn: s.nisn || "",
+        className: s.className || "",
+        tahunAjaran: s.tahunAjaran || "",
+        parentName: s.parentName || "",
+        parentPhone: s.parentPhone || "",
+        address: s.address || "",
+        photoUrl: s.photoUrl || "",
+      });
+    }
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="students_${Date.now()}.xlsx"`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    return sendResponse(res, 500, "Gagal membuat file XLSX");
+  }
+}
+
 async function getStudentsOptions(req, res) {
   try {
     const students = await prisma.student.findMany({
@@ -138,4 +221,4 @@ async function getStudentsOptions(req, res) {
   }
 }
 
-module.exports = { listStudents, createStudent, getStudent, updateStudent, deleteStudent, getStudentsOptions };
+module.exports = { listStudents, downloadStudentsXlsx, createStudent, getStudent, updateStudent, deleteStudent, getStudentsOptions };

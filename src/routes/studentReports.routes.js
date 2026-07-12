@@ -3,7 +3,8 @@ const { authMiddleware } = require("../middleware/auth");
 const { uploadImage } = require("../middleware/upload");
 const { validate } = require("../middleware/validate");
 const { studentReportSubmitSchema } = require("../validators/schemas");
-const { listStudentReports, getStudentReportDetail, submitStudentReport, updateStudentReport, deleteStudentReport } = require("../controllers/studentReports.controller");
+const { listStudentReports, getStudentReportDetail, downloadStudentReportsXlsx, submitStudentReport, updateStudentReport, deleteStudentReport } = require("../controllers/studentReports.controller");
+
 const { buildImagePath } = require("../utils/filePath");
 
 const router = express.Router();
@@ -124,4 +125,7 @@ router.put("/student-reports/:id", authMiddleware, uploadImage.any(), normalizeM
 // Hapus laporan siswa
 router.delete("/student-reports/:id", authMiddleware, deleteStudentReport);
 
+router.get("/student-reports/download", authMiddleware, downloadStudentReportsXlsx);
+
 module.exports = router;
+

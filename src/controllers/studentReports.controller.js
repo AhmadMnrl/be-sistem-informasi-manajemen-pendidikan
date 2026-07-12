@@ -559,10 +559,128 @@ async function deleteStudentReport(req, res) {
   }
 }
 
+async function downloadStudentReportsXlsx(req, res) {
+  try {
+    const studentId = req.query.studentId ? Number(req.query.studentId) : undefined;
+    const templateId = req.query.templateId ? Number(req.query.templateId) : undefined;
+    const year = req.query.year ? Number(req.query.year) : undefined;
+    const tahunAjaran = req.query.tahun_ajaran ? normalizeTahunAjaranToDb(req.query.tahun_ajaran) : undefined;
+    const semester = req.query.semester ? normalizeSemesterToDb(req.query.semester) : undefined;
+
+    const reports = await prisma.studentReport.findMany({
+      where: {
+        ...(studentId ? { studentId } : {}),
+        ...(templateId ? { templateId } : {}),
+        ...(year ? { year } : {}),
+        ...(tahunAjaran ? { tahunAjaran } : {}),
+        ...(semester ? { semester } : {}),
+      },
+      orderBy: { id: "desc" },
+      include: {
+        student: { select: { id: true, name: true, className: true, tahunAjaran: true } },
+        template: { include: { sections: { orderBy: { order: "asc" }, include: { questions: { orderBy: { order: "asc" }, include: { options: { orderBy: { id: "asc" } }, studentAnswers: { where: { studentReportId: undefined } } } } } } } },
+      },
+    });
+
+    // Untuk detail jawaban kita butuh studentAnswers per reportId.
+    // Ambil lagi secara efisien: fetch answers + template struktur per templateId.
+    const reportIds = reports.map((r) => r.id);
+    const [answersRows] = await Promise.all([
+      prisma.studentReportAnswer.findMany({
+        where: { studentReportId: { in: reportIds } },
+        select: { studentReportId: true, questionId: true, selectedOption: true, answerText: true, ket: true, predikat: true, photoUrl: true },
+      }),
+    ]);
+
+    const templateIds = [...new Set(reports.map((r) => r.templateId))].filter(Boolean);
+    const templates = await prisma.reportTemplate.findMany({
+      where: { id: { in: templateIds } },
+      include: { sections: { orderBy: { order: "asc" }, include: { questions: { orderBy: { order: "asc" }, include: { options: { orderBy: { id: "asc" } } } } } } },
+    });
+    const templateById = new Map(templates.map((t) => [t.id, t]));
+
+    const answersByReport = new Map();
+    for (const a of answersRows) {
+      if (!answersByReport.has(a.studentReportId)) answersByReport.set(a.studentReportId, []);
+      answersByReport.get(a.studentReportId).push(a);
+    }
+    const answersByReportQuestion = new Map();
+    for (const a of answersRows) {
+      answersByReportQuestion.set(`${a.studentReportId}:${a.questionId}`, a);
+    }
+
+    const ExcelJS = require("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("StudentReportsDetail");
+
+    sheet.columns = [
+      { header: "Report ID", key: "reportId", width: 10 },
+      { header: "Siswa", key: "studentName", width: 25 },
+      { header: "Kelas", key: "className", width: 15 },
+      { header: "Tahun Ajaran", key: "studentTahunAjaran", width: 16 },
+      { header: "Template", key: "templateTitle", width: 25 },
+      { header: "Tahun (Report)", key: "reportYear", width: 12 },
+      { header: "Tahun Ajaran (Report)", key: "tahunAjaran", width: 16 },
+      { header: "Semester", key: "semester", width: 10 },
+      { header: "Section", key: "section", width: 22 },
+      { header: "Question", key: "question", width: 30 },
+      { header: "Ket", key: "ket", width: 20 },
+      { header: "Predikat", key: "predikat", width: 15 },
+      { header: "Jawaban", key: "answer", width: 35 },
+      { header: "Photo URL", key: "photoUrl", width: 30 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    for (const r of reports) {
+      const tmpl = templateById.get(r.templateId);
+      if (!tmpl) continue;
+
+      const studentTahun = r.student?.tahunAjaran || "";
+      const tahun_ajaran_report = r.tahunAjaran || formatTahunAjaranFromYear(r.year) || "";
+      const semesterUi = mapSemesterToUi(r.semester);
+
+      for (const section of tmpl.sections) {
+        const sectionTitle = section.title || section.headers || "";
+        for (const q of section.questions) {
+          const ans = answersByReportQuestion.get(`${r.id}:${q.id}`) || {};
+          const photoArr = parsePhotosFromDb(ans.photoUrl);
+          const answer = q.type === "QUESTION" ? ans.selectedOption || "" : ans.answerText || "";
+
+          sheet.addRow({
+            reportId: r.id,
+            studentName: r.student?.name || "",
+            className: r.student?.className || "",
+            studentTahunAjaran: studentTahun,
+            templateTitle: r.template?.title || tmpl.title || "",
+            reportYear: r.year || "",
+            tahunAjaran: tahun_ajaran_report,
+            semester: semesterUi,
+            section: section.title || q.sectionId || "",
+            question: q.text,
+            ket: ans.ket || "",
+            predikat: ans.predikat || "",
+            answer: answer,
+            photoUrl: photoArr[0] || "",
+          });
+        }
+      }
+    }
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=student_rapor_${Date.now()}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    return sendResponse(res, 500, "Gagal membuat file XLSX rapor");
+  }
+}
+
 module.exports = {
   listStudentReports,
   getStudentReportDetail,
+  downloadStudentReportsXlsx,
   submitStudentReport,
   updateStudentReport,
   deleteStudentReport,
 };
+
