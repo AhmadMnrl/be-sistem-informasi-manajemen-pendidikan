@@ -5,6 +5,7 @@ const { logActivity } = require("../utils/activityLog");
 const { sendResponse } = require("../utils/response");
 const { paginate } = require("../utils/pagination");
 const { normalizeFilePath, buildDocumentPath } = require("../utils/filePath");
+const { uploadToSupabase } = require("../utils/supabaseStorage");
 
 function resolveUploadedDocumentPath(req) {
   if (req.file?.filename) return buildDocumentPath(req.file.filename);
@@ -108,10 +109,62 @@ async function createDocument(req, res) {
   const { title, category, documentDate, filePath: filePathFromBody } = req.body || {};
   if (!title) return sendResponse(res, 400, "Judul dokumen wajib");
 
-  const uploadedPath = resolveUploadedDocumentPath(req);
-  const filePath = uploadedPath || normalizeFilePath(filePathFromBody);
-  if (!filePath) return sendResponse(res, 400, "File wajib diisi (upload field 'file'/'filePath' atau kirim filePath string)");
+  // Jika ada file upload (multipart), maka unggah ke Supabase Storage
+  // lalu simpan public URL ke DB.
+  let filePath = null;
   const uploadedById = req.user.id;
+
+  // Prefer file yang benar-benar diupload multipart
+  if (req.file?.buffer) {
+    // multer memory storage (kalau suatu saat dikonfigurasi)
+    const { originalname, mimetype } = req.file;
+    const bucket = process.env.SUPABASE_DOCS_BUCKET || "documents";
+    const ext = path.extname(originalname);
+    const ts = Date.now();
+    const fileName = `dokumen_${ts}${ext}`;
+
+    const uploadRes = await uploadToSupabase({
+      bucket,
+      fileName,
+      fileBuffer: req.file.buffer,
+      contentType: mimetype || "application/octet-stream",
+    });
+
+    filePath = uploadRes.publicUrl;
+  } else {
+    const uploadedPath = resolveUploadedDocumentPath(req);
+    filePath = uploadedPath || normalizeFilePath(filePathFromBody);
+
+    // NOTE: Saat ini upload.js masih diskStorage, jadi req.file.buffer tidak tersedia.
+    // Jika file memang tersimpan di disk, kita bisa baca file-nya lalu upload ke Supabase.
+    if (!filePath && req.file?.path) filePath = normalizeFilePath(req.file.path);
+    if (uploadedPath && req.file?.path) {
+      // uploadedPath biasanya berupa path relatif; ambil path asli dari multer
+      try {
+        const abs = req.file.path;
+        const fileBuffer = fs.readFileSync(abs);
+        const bucket = process.env.SUPABASE_DOCS_BUCKET || "documents";
+        const originalname = req.file.originalname || "document";
+        const ext = path.extname(originalname);
+        const ts = Date.now();
+        const fileName = `dokumen_${ts}${ext}`;
+
+        const uploadRes = await uploadToSupabase({
+          bucket,
+          fileName,
+          fileBuffer,
+          contentType: req.file.mimetype || "application/octet-stream",
+        });
+
+        filePath = uploadRes.publicUrl;
+      } catch (e) {
+        // fallback ke filePath dari uploadedPath
+        filePath = uploadedPath;
+      }
+    }
+  }
+
+  if (!filePath) return sendResponse(res, 400, "File wajib diisi (upload field 'file'/'filePath' atau kirim filePath string)");
 
   try {
     const created = await prisma.document.create({
@@ -172,7 +225,6 @@ async function deleteDocument(req, res) {
     return sendResponse(res, 404, "Dokumen tidak ditemukan");
   }
 }
-
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || path.join(process.cwd(), "uploads");
 
