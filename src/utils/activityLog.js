@@ -12,7 +12,6 @@ async function logActivity({ userId, action, entity, entityId, metadata }) {
 			},
 		});
 	} catch (e) {
-		// intentionally ignore errors to not block main flow
 	}
 }
 
