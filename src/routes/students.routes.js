@@ -16,7 +16,7 @@ const {
 
 const router = express.Router();
 
-router.use(authMiddleware); // Semua role bisa akses students
+router.use(authMiddleware);
 
 router.get("/options", getStudentsOptions);
 router.get("/download", downloadStudentsXlsx);

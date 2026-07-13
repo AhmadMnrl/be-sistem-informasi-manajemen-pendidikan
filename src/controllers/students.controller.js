@@ -207,15 +207,38 @@ async function downloadStudentsXlsx(req, res) {
 
 async function getStudentsOptions(req, res) {
   try {
+    const q = req.query.q ? String(req.query.q).trim() : undefined;
+    const className = req.query.className ? String(req.query.className).trim() : undefined;
+
     const students = await prisma.student.findMany({
+      where: {
+        ...(q
+          ? {
+              name: { contains: q, mode: "insensitive" },
+            }
+          : {}),
+        ...(className
+          ? {
+              className: { equals: className },
+            }
+          : {}),
+      },
       select: {
         id: true,
         name: true,
+        className: true,
       },
       orderBy: { name: "asc" },
     });
-    const options = students.map((s) => ({ label: s.name, value: s.id }));
+    const options = students.map((s) => ({
+      id: s.id,
+      className: s.className,
+      value: s.id,
+      label: `${s.name}`,
+    }));
+
     return sendResponse(res, 200, "Opsi siswa berhasil diambil", options);
+
   } catch (e) {
     return sendResponse(res, 500, "Gagal mengambil opsi siswa");
   }
