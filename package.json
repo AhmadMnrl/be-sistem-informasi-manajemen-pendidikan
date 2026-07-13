@@ -13,7 +13,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --forceExit",
     "test:integration": "jest --testPathPattern=src/__tests__/integration --forceExit",
-    "test:integration:watch": "jest --testPathPattern=src/__tests__/integration --watch"
+    "test:integration:watch": "jest --testPathPattern=src/__tests__/integration --watch",
+    "build": "echo 'no build step'"
+
   },
   "repository": {
     "type": "git",
