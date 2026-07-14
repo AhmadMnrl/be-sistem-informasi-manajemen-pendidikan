@@ -23,8 +23,19 @@ async function listReports(req, res) {
   };
 
   const whereFinal = Object.keys(where).length ? where : undefined;
-  const reports = await prisma.report.findMany({ where: whereFinal, orderBy: { id: "desc" } });
-  return sendResponse(res, 200, "Data rapor berhasil diambil", reports);
+  const reports = await prisma.report.findMany({
+    where: whereFinal,
+    orderBy: { id: "desc" },
+    include: { teacher: { select: { id: true, name: true } } },
+  });
+
+  const response = reports.map((r) => ({
+    ...r,
+    teacherName: r.teacher?.name ?? null,
+  }));
+
+  return sendResponse(res, 200, "Data rapor berhasil diambil", response);
+
 }
 
 async function createReport(req, res) {
@@ -33,7 +44,11 @@ async function createReport(req, res) {
   const photoUrl = req.file ? buildImagePath(req.file.filename) : null;
   const teacherId = req.user.id;
   try {
-    const created = await prisma.report.create({ data: { studentId: Number(studentId), title, description: description || null, photoUrl, date: date ? new Date(date) : undefined, teacherId } });
+    const created = await prisma.report.create({
+      data: { studentId: Number(studentId), title, description: description || null, photoUrl, date: date ? new Date(date) : undefined, teacherId },
+      include: { teacher: { select: { id: true, name: true } } },
+    });
+
     await logActivity({ userId: req.user.id, action: "CREATE_REPORT", entity: "Report", entityId: created.id });
     return sendResponse(res, 201, "Rapor berhasil dibuat", created);
   } catch (e) {
@@ -44,9 +59,16 @@ async function createReport(req, res) {
 async function getReport(req, res) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
-  const report = await prisma.report.findUnique({ where: { id } });
+  const report = await prisma.report.findUnique({
+    where: { id },
+    include: { teacher: { select: { id: true, name: true } } },
+  });
   if (!report) return sendResponse(res, 404, "Rapor tidak ditemukan");
-  return sendResponse(res, 200, "Data rapor berhasil diambil", report);
+  return sendResponse(res, 200, "Data rapor berhasil diambil", {
+    ...report,
+    teacherName: report.teacher?.name ?? null,
+  });
+
 }
 
 async function updateReport(req, res) {
@@ -59,9 +81,17 @@ async function updateReport(req, res) {
   if (date) data.date = new Date(date);
   if (req.file) data.photoUrl = buildImagePath(req.file.filename);
   try {
-    const updated = await prisma.report.update({ where: { id }, data });
+    const updated = await prisma.report.update({
+      where: { id },
+      data,
+      include: { teacher: { select: { id: true, name: true } } },
+    });
     await logActivity({ userId: req.user.id, action: "UPDATE_REPORT", entity: "Report", entityId: updated.id });
-    return sendResponse(res, 200, "Rapor berhasil diperbarui", updated);
+    return sendResponse(res, 200, "Rapor berhasil diperbarui", {
+      ...updated,
+      teacherName: updated.teacher?.name ?? null,
+    });
+
   } catch (e) {
     return sendResponse(res, 404, "Rapor tidak ditemukan");
   }

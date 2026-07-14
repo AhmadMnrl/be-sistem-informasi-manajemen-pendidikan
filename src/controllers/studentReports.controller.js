@@ -209,7 +209,7 @@ async function listStudentReports(req, res) {
 
     return sendResponse(res, 200, "Data laporan siswa berhasil diambil", normalizedReports);
   } catch (error) {
-    console.error("❌ listStudentReports error:", error);
+    console.error("listStudentReports error:", error);
     return sendResponse(res, 500, "Gagal mengambil data laporan siswa");
   }
 }
@@ -268,7 +268,7 @@ async function getStudentReportDetail(req, res) {
 
     return sendResponse(res, 200, "Detail laporan siswa berhasil diambil", formatted);
   } catch (error) {
-    console.error("❌ getStudentReportDetail error:", error);
+    console.error("getStudentReportDetail error:", error);
     return sendResponse(res, 500, "Gagal mengambil detail laporan siswa");
   }
 }
@@ -391,7 +391,7 @@ async function submitStudentReport(req, res) {
 
     return sendResponse(res, 201, "Jawaban siswa berhasil disimpan", { id: studentReport.id, semester: mapSemesterToUi(studentReport.semester) });
   } catch (error) {
-    console.error("❌ submitStudentReport error:", error);
+    console.error("submitStudentReport error:", error);
 
     if (error?.code === "P2003") {
       return sendResponse(res, 400, "Referensi data tidak valid. Pastikan siswa, template, dan pertanyaan masih tersedia", {
@@ -529,7 +529,7 @@ async function updateStudentReport(req, res) {
       semester: mapSemesterToUi(updatedReport.semester),
     });
   } catch (error) {
-    console.error("❌ updateStudentReport error:", error);
+    console.error("updateStudentReport error:", error);
 
     if (error?.code === "P2003") {
       return sendResponse(res, 400, "Referensi data tidak valid. Pastikan siswa, template, dan pertanyaan masih tersedia", {
@@ -567,7 +567,7 @@ async function deleteStudentReport(req, res) {
 
     return sendResponse(res, 200, "Laporan siswa berhasil dihapus");
   } catch (error) {
-    console.error("❌ deleteStudentReport error:", error);
+    console.error("deleteStudentReport error:", error);
     return sendResponse(res, 500, "Gagal menghapus laporan siswa");
   }
 }

@@ -90,7 +90,7 @@ async function listQuestionSections(req, res) {
 
     return sendResponse(res, 200, "Data section soal berhasil diambil", items);
   } catch (error) {
-    console.error("❌ listQuestionSections error:", error);
+    console.error("listQuestionSections error:", error);
     return sendResponse(res, 500, "Gagal mengambil data section soal");
   }
 }
@@ -119,7 +119,7 @@ async function getQuestionSectionDetail(req, res) {
       questions: items.map(mapQuestionRecord),
     });
   } catch (error) {
-    console.error("❌ getQuestionSectionDetail error:", error);
+    console.error("getQuestionSectionDetail error:", error);
     return sendResponse(res, 500, "Gagal mengambil detail section soal");
   }
 }
@@ -183,7 +183,7 @@ async function updateQuestionSection(req, res) {
       questions: refreshedItems.map(mapQuestionRecord),
     });
   } catch (error) {
-    console.error("❌ updateQuestionSection error:", error);
+    console.error("updateQuestionSection error:", error);
     return sendResponse(res, 500, "Gagal memperbarui section soal");
   }
 }
@@ -210,9 +210,11 @@ async function createQuestion(req, res) {
               imageUrl: item.imageUrl ?? null,
               teacherId,
             },
+            include: { teacher: { select: { id: true, name: true } } },
           }),
         ),
       );
+
 
       await logActivity({
         userId: req.user.id,
@@ -230,7 +232,11 @@ async function createQuestion(req, res) {
     }
 
     const resolvedImageUrl = uploadedImageUrl || normalizeFilePath(imageUrl);
-    const created = await prisma.question.create({ data: { text, imageUrl: resolvedImageUrl, section: normalizedSection, teacherId } });
+    const created = await prisma.question.create({
+      data: { text, imageUrl: resolvedImageUrl, section: normalizedSection, teacherId },
+      include: { teacher: { select: { id: true, name: true } } },
+    });
+
     await logActivity({
       userId: req.user.id,
       action: "CREATE_QUESTION",
@@ -248,9 +254,17 @@ async function getQuestion(req, res) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return sendResponse(res, 400, "id tidak valid");
 
-  const item = await prisma.question.findUnique({ where: { id } });
+  const item = await prisma.question.findUnique({
+    where: { id },
+    include: { teacher: { select: { id: true, name: true } } },
+  });
+
   if (!item) return sendResponse(res, 404, "Soal tidak ditemukan");
-  return sendResponse(res, 200, "Data soal berhasil diambil", item);
+    return sendResponse(res, 200, "Data soal berhasil diambil", {
+      ...item,
+      teacherName: item.teacher?.name ?? null,
+    });
+
 }
 
 async function updateQuestion(req, res) {
@@ -262,9 +276,17 @@ async function updateQuestion(req, res) {
   if (req.file) data.imageUrl = buildImagePath(req.file.filename);
   else if (imageUrl !== undefined) data.imageUrl = normalizeFilePath(imageUrl);
   try {
-    const updated = await prisma.question.update({ where: { id }, data });
+    const updated = await prisma.question.update({
+      where: { id },
+      data,
+      include: { teacher: { select: { id: true, name: true } } },
+    });
     await logActivity({ userId: req.user.id, action: "UPDATE_QUESTION", entity: "Question", entityId: updated.id });
-    return sendResponse(res, 200, "Soal berhasil diperbarui", updated);
+    return sendResponse(res, 200, "Soal berhasil diperbarui", {
+      ...updated,
+      teacherName: updated.teacher?.name ?? null,
+    });
+
   } catch (e) {
     return sendResponse(res, 404, "Soal tidak ditemukan");
   }

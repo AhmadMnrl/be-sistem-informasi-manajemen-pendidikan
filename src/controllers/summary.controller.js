@@ -53,7 +53,7 @@ async function summary(req, res) {
       latestAnecdotes,
     });
   } catch (error) {
-    console.error('❌ summary error:', error);
+    console.error('summary error:', error);
     return sendResponse(res, 500, 'Gagal mengambil ringkasan statistik', null, error);
   }
 }

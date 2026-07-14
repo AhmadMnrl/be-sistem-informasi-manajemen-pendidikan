@@ -35,10 +35,22 @@ async function listAnecdotes(req, res) {
       orderBy: { id: "desc" },
       skip: (p - 1) * ps,
       take: ps,
+      include: {
+        teacher: { select: { id: true, name: true } },
+      },
     });
 
+
     const response = buildPaginationResponse(anecdotes, totalItems, p, ps);
-    return sendResponse(res, 200, "Data anekdot berhasil diambil", response);
+
+    return sendResponse(res, 200, "Data anekdot berhasil diambil", {
+      ...response,
+      data: response.data.map((a) => ({
+        ...a,
+        teacherName: a.teacher?.name ?? null,
+      })),
+    });
+
   } catch (e) {
     return sendResponse(res, 500, "Gagal mengambil data anekdot");
   }
@@ -59,9 +71,16 @@ async function createAnecdote(req, res) {
         imageUrl,
         teacherId,
       },
+      include: { teacher: { select: { id: true, name: true } } },
     });
+
+
     await logActivity({ userId: req.user.id, action: "CREATE_ANECDOTE", entity: "Anecdote", entityId: created.id });
-    return sendResponse(res, 201, "Anekdot berhasil dibuat", created);
+    return sendResponse(res, 201, "Anekdot berhasil dibuat", {
+      ...created,
+      teacherName: created.teacher?.name ?? null,
+    });
+
   } catch (e) {
     return sendResponse(res, 500, "Gagal membuat anekdot");
   }
@@ -70,9 +89,17 @@ async function createAnecdote(req, res) {
 async function getAnecdote(req, res) {
   const id = Number(req.params.id);
   try {
-    const item = await prisma.anecdote.findUnique({ where: { id } });
+    const item = await prisma.anecdote.findUnique({
+      where: { id },
+      include: { teacher: { select: { id: true, name: true } } },
+    });
     if (!item) return sendResponse(res, 404, "Anekdot tidak ditemukan");
-    return sendResponse(res, 200, "Data anekdot berhasil diambil", item);
+
+    return sendResponse(res, 200, "Data anekdot berhasil diambil", {
+      ...item,
+      teacherName: item.teacher?.name ?? null,
+    });
+
   } catch (e) {
     return sendResponse(res, 404, "Anekdot tidak ditemukan");
   }
@@ -88,9 +115,17 @@ async function updateAnecdote(req, res) {
   if (date) data.date = new Date(date);
   if (req.file) data.imageUrl = buildImagePath(req.file.filename);
   try {
-    const updated = await prisma.anecdote.update({ where: { id }, data });
+    const updated = await prisma.anecdote.update({
+      where: { id },
+      data,
+      include: { teacher: { select: { id: true, name: true } } },
+    });
     await logActivity({ userId: req.user.id, action: "UPDATE_ANECDOTE", entity: "Anecdote", entityId: updated.id });
-    return sendResponse(res, 200, "Anekdot berhasil diperbarui", updated);
+    return sendResponse(res, 200, "Anekdot berhasil diperbarui", {
+      ...updated,
+      teacherName: updated.teacher?.name ?? null,
+    });
+
   } catch (e) {
     return sendResponse(res, 404, "Anekdot tidak ditemukan");
   }
