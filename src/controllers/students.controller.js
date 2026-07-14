@@ -57,7 +57,7 @@ async function createStudent(req, res) {
         nisn: nisn || null,
         className: className || null,
         tahunAjaran: tahunAjaran || null,
-        parentanme: parentName || null,
+        parentName: parentName || null,
         parentPhone: parentPhone || null,
         address: address || null,
         photoUrl,
