@@ -66,6 +66,21 @@ async function createStudent(req, res) {
     await logActivity({ userId: req.user.id, action: "CREATE_STUDENT", entity: "Student", entityId: created.id });
     return sendResponse(res, 201, "Siswa berhasil dibuat", created);
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const target = e.meta?.target;
+      const field = Array.isArray(target) ? target[0] : target;
+
+      const detail = field
+        ? `Duplikat pada field ${field}`
+        : "Data duplikat (identifier/NIK/NISN)";
+
+      // format spesifik sesuai ekspektasi: "Data duplikat (identifier/NIK) ..." dan "... (NISN) ..."
+      const msg = detail.replace(/_/g, " ");
+      if (field && field.toLowerCase().includes("identifier")) return sendResponse(res, 409, "Data duplikat (identifier/NIK) pada data siswa");
+      if (field && field.toLowerCase().includes("nisn")) return sendResponse(res, 409, "Data duplikat (NISN) pada data siswa");
+      return sendResponse(res, 409, msg);
+    }
+
     // console.error("createStudent error:", e);
     return sendResponse(res, 400, "Gagal membuat siswa");
   }

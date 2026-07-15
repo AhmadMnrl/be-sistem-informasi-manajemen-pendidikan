@@ -7,6 +7,234 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                    Int              @id @default(autoincrement())
+  name                  String
+  email                 String           @unique(map: "User_email_key")
+  passwordHash          String
+  role                  Role
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  identityPhotoUrl      String?
+  activityLogs          ActivityLog[]
+  anecdotes             Anecdote[]
+  apeCreated            Ape[]            @relation("ApeCreatedBy")
+  apeUpdated            Ape[]            @relation("ApeUpdatedBy")
+  documentsUploaded     Document[]
+  questionsAuthored     Question[]
+  reportsAuthored       Report[]         @relation("ReportTeacher")
+  createdTemplates      ReportTemplate[]
+  createdStudentReports StudentReport[]
+
+  @@map("user")
+}
+
+model Student {
+  id             Int             @id @default(autoincrement())
+  name           String
+  identifier     String          @unique(map: "Student_identifier_key")
+  nisn           String?         @unique(map: "Student_nisn_key")
+  className      String?
+  tahunAjaran    String?
+  parentName     String?
+  parentPhone    String?
+  address        String?
+  photoUrl       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+  reports        Report[]
+  studentReports StudentReport[]
+
+  @@index([identifier], map: "Student_identifier_idx")
+  @@map("student")
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  photoUrl    String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  studentId   Int
+  teacherId   Int
+  student     Student  @relation(fields: [studentId], references: [id], map: "Report_studentId_fkey")
+  teacher     User     @relation("ReportTeacher", fields: [teacherId], references: [id], map: "Report_teacherId_fkey")
+
+  @@index([studentId], map: "Report_studentId_fkey")
+  @@index([teacherId], map: "Report_teacherId_fkey")
+  @@map("report")
+}
+
+model Document {
+  id           Int       @id @default(autoincrement())
+  title        String
+  category     String?
+  filePath     String
+  documentDate DateTime?
+  uploadedAt   DateTime  @default(now())
+  uploadedById Int
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id], map: "Document_uploadedById_fkey")
+
+  @@index([uploadedById], map: "Document_uploadedById_fkey")
+  @@map("document")
+}
+
+model Anecdote {
+  id          Int      @id @default(autoincrement())
+  content     String
+  description String?  @db.Text
+  category    String?
+  date        DateTime @default(now())
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  teacherId   Int
+  teacher     User     @relation(fields: [teacherId], references: [id], map: "Anecdote_teacherId_fkey")
+
+  @@index([teacherId], map: "Anecdote_teacherId_idx")
+  @@map("anecdote")
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  text      String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  teacherId Int
+  section   String   @default("Section 1")
+  teacher   User     @relation(fields: [teacherId], references: [id], map: "Question_teacherId_fkey")
+
+  @@index([teacherId], map: "Question_teacherId_fkey")
+  @@map("question")
+}
+
+model Ape {
+  id          Int      @id @default(autoincrement())
+  name        String
+  condition   String?
+  quantity    Int      @default(0)
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int?
+  updatedById Int
+  imageUrl    String?
+  createdBy   User?    @relation("ApeCreatedBy", fields: [createdById], references: [id], map: "Ape_createdById_fkey")
+  updatedBy   User     @relation("ApeUpdatedBy", fields: [updatedById], references: [id], map: "Ape_updatedById_fkey")
+
+  @@index([createdById], map: "Ape_createdById_fkey")
+  @@index([updatedById], map: "Ape_updatedById_fkey")
+  @@map("ape")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  action    String
+  entity    String?
+  entityId  Int?
+  metadata  String?  @db.LongText
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], map: "ActivityLog_userId_fkey")
+
+  @@index([userId], map: "ActivityLog_userId_fkey")
+  @@map("activity_log")
+}
+
+model ReportTemplate {
+  id             Int             @id @default(autoincrement())
+  title          String
+  year           Int?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  createdById    Int
+  sections       ReportSection[]
+  createdBy      User            @relation(fields: [createdById], references: [id], map: "ReportTemplate_createdById_fkey")
+  studentReports StudentReport[]
+
+  @@index([createdById], map: "ReportTemplate_createdById_fkey")
+  @@index([isActive], map: "ReportTemplate_isActive_idx")
+  @@map("report_template")
+}
+
+model ReportSection {
+  id            Int              @id @default(autoincrement())
+  sectionNumber Int
+  order         Int?
+  type          SectionType
+  title         String?
+  headers       String?
+  templateId    Int
+  subtitle      String?
+  questions     ReportQuestion[]
+  template      ReportTemplate   @relation(fields: [templateId], references: [id], map: "ReportSection_templateId_fkey")
+
+  @@index([templateId], map: "ReportSection_templateId_fkey")
+  @@map("report_section")
+}
+
+model ReportQuestion {
+  id             Int                   @id @default(autoincrement())
+  text           String
+  order          Int?
+  type           QuestionType          @default(QUESTION)
+  sectionId      Int
+  options        ReportAnswerOption[]
+  section        ReportSection         @relation(fields: [sectionId], references: [id], map: "ReportQuestion_sectionId_fkey")
+  studentAnswers StudentReportAnswer[]
+
+  @@index([sectionId], map: "ReportQuestion_sectionId_fkey")
+  @@map("report_question")
+}
+
+model ReportAnswerOption {
+  id         Int            @id @default(autoincrement())
+  label      String
+  questionId Int
+  question   ReportQuestion @relation(fields: [questionId], references: [id], map: "ReportAnswerOption_questionId_fkey")
+
+  @@index([questionId], map: "ReportAnswerOption_questionId_fkey")
+  @@map("report_answer_option")
+}
+
+model StudentReport {
+  id          Int                   @id @default(autoincrement())
+  year        Int
+  semester    Semester              @default(GANJIL)
+  createdAt   DateTime              @default(now())
+  studentId   Int
+  templateId  Int
+  createdById Int
+  tahunAjaran String?               @map("tahun_ajaran")
+  createdBy   User                  @relation(fields: [createdById], references: [id], map: "StudentReport_createdById_fkey")
+  student     Student               @relation(fields: [studentId], references: [id], map: "StudentReport_studentId_fkey")
+  template    ReportTemplate        @relation(fields: [templateId], references: [id], map: "StudentReport_templateId_fkey")
+  answers     StudentReportAnswer[]
+
+  @@index([createdById], map: "StudentReport_createdById_fkey")
+  @@index([studentId], map: "StudentReport_studentId_fkey")
+  @@index([templateId], map: "StudentReport_templateId_fkey")
+  @@map("student_report")
+}
+
+model StudentReportAnswer {
+  id              Int            @id @default(autoincrement())
+  ket             String?
+  answerText      String?
+  selectedOption  String?
+  photoUrl        String?        @db.Text
+  predikat        String?
+  studentReportId Int
+  questionId      Int
+  question        ReportQuestion @relation(fields: [questionId], references: [id], map: "StudentReportAnswer_questionId_fkey")
+  studentReport   StudentReport  @relation(fields: [studentReportId], references: [id], map: "StudentReportAnswer_studentReportId_fkey")
+
+  @@index([questionId], map: "StudentReportAnswer_questionId_fkey")
+  @@index([studentReportId], map: "StudentReportAnswer_studentReportId_fkey")
+  @@map("student_report_answer")
+}
+
 enum Role {
   ADMIN
   KEPALA_SEKOLAH
@@ -20,245 +248,12 @@ enum SectionType {
 }
 
 enum QuestionType {
-  QUESTION   // pilihan jawaban
-  FREE_TEXT  // teks bebas
-  PHOTO      // unggah foto
+  QUESTION
+  FREE_TEXT
+  PHOTO
 }
 
 enum Semester {
   GANJIL
   GENAP
-}
-
-model User {
-  id           Int      @id @default(autoincrement())
-  name         String
-  identityPhotoUrl String?
-  email        String   @unique
-  passwordHash String
-  role         Role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  reportsAuthored       Report[]   @relation("ReportTeacher")
-  documentsUploaded     Document[]
-  anecdotes             Anecdote[]
-  questionsAuthored     Question[]
-  apeUpdated            Ape[]        @relation("ApeUpdatedBy")
-  apeCreated            Ape[]        @relation("ApeCreatedBy")
-  activityLogs          ActivityLog[]
-  createdTemplates      ReportTemplate[]
-  createdStudentReports StudentReport[]
-
-  @@map("user")
-}
-
-model Student {
-  id           Int       @id @default(autoincrement())
-  name         String
-  identifier   String    @unique
-  nisn         String?
-  className    String?
-  tahunAjaran  String?
-  parentName   String?
-  parentPhone  String?
-  address      String?
-  photoUrl     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @default(now()) @updatedAt
-
-  reports        Report[]
-  studentReports StudentReport[]
-
-  @@index([identifier])
-  @@map("student")
-}
-
-model Report {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  photoUrl    String?
-  date        DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-
-  studentId Int
-  student   Student   @relation(fields: [studentId], references: [id])
-
-  teacherId Int
-  teacher   User      @relation("ReportTeacher", fields: [teacherId], references: [id])
-
-  @@map("report")
-}
-
-model Document {
-  id           Int       @id @default(autoincrement())
-  title        String
-  category     String?
-  filePath     String
-  documentDate DateTime?
-  uploadedAt   DateTime  @default(now())
-
-  uploadedById Int
-  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
-
-  @@map("document")
-}
-
-model Anecdote {
-  id          Int       @id @default(autoincrement())
-  content     String
-  description String?   @db.Text
-  category    String?
-  date        DateTime  @default(now())
-  imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
-
-  teacherId Int
-  teacher   User      @relation(fields: [teacherId], references: [id])
-
-  @@index([teacherId])
-  @@map("anecdote")
-}
-
-model Question {
-  id        Int       @id @default(autoincrement())
-  text      String
-  section   String    @default("Section 1")
-  imageUrl  String?
-  createdAt DateTime  @default(now())
-
-  teacherId Int
-  teacher   User      @relation(fields: [teacherId], references: [id])
-
-  @@map("question")
-}
-
-model Ape {
-  id         Int       @id @default(autoincrement())
-  name       String
-  condition  String?
-  quantity   Int       @default(0)
-  location   String?
-  imageUrl   String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  createdById Int?
-  createdBy   User?     @relation("ApeCreatedBy", fields: [createdById], references: [id])
-  updatedById Int
-  updatedBy   User      @relation("ApeUpdatedBy", fields: [updatedById], references: [id])
-
-  @@map("ape")
-}
-
-model ActivityLog {
-  id        Int       @id @default(autoincrement())
-  action    String
-  entity    String?
-  entityId  Int?
-  metadata  Json?
-  createdAt DateTime  @default(now())
-
-  userId Int
-  user   User     @relation(fields: [userId], references: [id])
-
-  @@map("activity_log")
-}
-
-model ReportTemplate {
-  id          Int            @id @default(autoincrement())
-  title       String
-  year        Int?
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-
-  createdById Int
-  createdBy   User           @relation(fields: [createdById], references: [id])
-
-  sections    ReportSection[]
-  studentReports StudentReport[]
-
-  @@index([isActive])
-  @@map("report_template")
-}
-
-model ReportSection {
-  id            Int            @id @default(autoincrement())
-  sectionNumber Int
-  order         Int?
-  type          SectionType
-  title         String?
-  subtitle      String?
-  headers       String?
-
-  templateId Int
-  template   ReportTemplate @relation(fields: [templateId], references: [id])
-
-  questions  ReportQuestion[]
-
-  @@map("report_section")
-}
-
-model ReportQuestion {
-  id         Int           @id @default(autoincrement())
-  text       String
-  order      Int?
-  type       QuestionType  @default(QUESTION)
-
-  sectionId  Int
-  section    ReportSection @relation(fields: [sectionId], references: [id])
-
-  options    ReportAnswerOption[]
-  studentAnswers StudentReportAnswer[]
-
-  @@map("report_question")
-}
-
-model ReportAnswerOption {
-  id         Int            @id @default(autoincrement())
-  label      String
-
-  questionId Int
-  question   ReportQuestion @relation(fields: [questionId], references: [id])
-
-  @@map("report_answer_option")
-}
-
-model StudentReport {
-  id           Int                  @id @default(autoincrement())
-  year         Int
-  tahunAjaran  String?              @map("tahun_ajaran")
-  semester     Semester             @default(GANJIL)
-  createdAt    DateTime             @default(now())
-
-  studentId    Int
-  student      Student              @relation(fields: [studentId], references: [id])
-
-  templateId   Int
-  template     ReportTemplate       @relation(fields: [templateId], references: [id])
-
-  createdById  Int
-  createdBy    User                 @relation(fields: [createdById], references: [id])
-
-  answers      StudentReportAnswer[]
-
-  @@map("student_report")
-}
-
-model StudentReportAnswer {
-  id              Int           @id @default(autoincrement())
-  ket             String?
-  answerText      String?       // untuk FREE_TEXT
-  selectedOption  String?       // untuk QUESTION
-  photoUrl        String?       @db.Text // untuk PHOTO (bisa simpan JSON array url)
-  predikat        String?       // untuk penilaian predikat 
-  studentReportId Int
-  studentReport   StudentReport @relation(fields: [studentReportId], references: [id])
-
-  questionId      Int
-  question        ReportQuestion @relation(fields: [questionId], references: [id])
-
-  @@map("student_report_answer")
 }

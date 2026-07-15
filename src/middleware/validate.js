@@ -43,6 +43,8 @@ function validate({ body, query, params }) {
         const flattened = err.flatten();
 
         return res.status(400).json({
+          status: 400,
+          success: false,
           message: firstMessage,
           errors: flattened,
         });
