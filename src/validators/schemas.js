@@ -34,14 +34,14 @@ const userUpdateSchema = z.object({
 
 // STUDENTS
 const studentCreateSchema = z.object({
-  name: z.string().min(1),
-  identifier: z.string().min(1),
-  nisn: z.string().optional().nullable(),
-  className: z.string().optional().nullable(),
-  tahunAjaran: z.string().optional().nullable(),
-  parentName: z.string().optional().nullable(),
-  parentPhone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  name: z.string().min(1, "Nama wajib diisi"),
+  identifier: z.string().min(1, "Identifier wajib diisi"),
+  nisn: z.string().min(1, "NISN tidak valid").optional().nullable(),
+  className: z.string().min(1, "Kelas tidak valid").optional().nullable(),
+  tahunAjaran: z.string().min(1, "Tahun ajaran tidak valid").optional().nullable(),
+  parentName: z.string().min(1, "Nama orang tua tidak valid").optional().nullable(),
+  parentPhone: z.string().min(1, "No HP tidak valid").optional().nullable(),
+  address: z.string().min(1, "Alamat tidak valid").optional().nullable(),
 });
 const studentUpdateSchema = studentCreateSchema.partial();
 
@@ -67,32 +67,32 @@ const documentUpdateSchema = z.object({
 
 // ANECDOTES
 const anecdoteCreateSchema = z.object({
-  content: z.string().min(1),
-  description: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
+  content: z.string().min(1, "Konten anekdot wajib diisi"),
+  description: z.string().min(1, "Deskripsi anekdot tidak valid").optional().nullable(),
+  category: z.string().min(1, "Kategori anekdot tidak valid").optional().nullable(),
   date: dateOnlyOrDateTimeSchema.optional(),
 });
 const anecdoteUpdateSchema = z.object({
-  content: z.string().min(1).optional(),
-  description: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
+  content: z.string().min(1, "Konten anekdot wajib diisi").optional(),
+  description: z.string().min(1, "Deskripsi anekdot tidak valid").optional().nullable(),
+  category: z.string().min(1, "Kategori anekdot tidak valid").optional().nullable(),
   date: dateOnlyOrDateTimeSchema.optional(),
 });
 
 // QUESTIONS generic
 const questionCreateSchema = z
   .object({
-    section: z.string().min(1).optional(),
-    text: z.string().min(1).optional(),
-    imageUrl: z.string().min(1).optional().nullable(),
+    section: z.string().min(1, "Section wajib diisi").optional(),
+    text: z.string().min(1, "Text soal wajib diisi").optional(),
+    imageUrl: z.string().min(1, "imageUrl tidak valid").optional().nullable(),
     questions: z
       .array(
         z.object({
-          text: z.string().min(1),
-          imageUrl: z.string().min(1).optional().nullable(),
+          text: z.string().min(1, "Text soal wajib diisi"),
+          imageUrl: z.string().min(1, "imageUrl tidak valid").optional().nullable(),
         }),
       )
-      .min(1)
+      .min(1, "questions[] wajib diisi")
       .optional(),
   })
   .superRefine((payload, ctx) => {
@@ -108,30 +108,30 @@ const questionCreateSchema = z
     }
   });
 const questionUpdateSchema = z.object({
-  text: z.string().min(1).optional(),
-  section: z.string().min(1).optional(),
-  imageUrl: z.string().min(1).optional().nullable(),
+  text: z.string().min(1, "Text soal wajib diisi").optional(),
+  section: z.string().min(1, "Section wajib diisi").optional(),
+  imageUrl: z.string().min(1, "imageUrl tidak valid").optional().nullable(),
 });
 
 const questionSectionUpdateSchema = z.object({
-  section: z.string().min(1).optional(),
+  section: z.string().min(1, "Section wajib diisi").optional(),
   questions: z
     .array(
       z.object({
-        text: z.string().min(1),
-        imageUrl: z.string().min(1).optional().nullable(),
+        text: z.string().min(1, "Text soal wajib diisi"),
+        imageUrl: z.string().min(1, "imageUrl tidak valid").optional().nullable(),
       }),
     )
-    .min(1),
+    .min(1, "questions[] wajib diisi"),
 });
 
 // APE
 const apeCreateSchema = z.object({
-  name: z.string().min(1),
-  condition: z.string().optional().nullable(),
-  quantity: z.coerce.number().int().nonnegative().optional(),
-  location: z.string().optional().nullable(),
-  imageUrl: z.string().optional().nullable(),
+  name: z.string().min(1, "Nama APE wajib diisi"),
+  condition: z.string().min(1, "Kondisi APE tidak valid").optional().nullable(),
+  quantity: z.coerce.number().int().nonnegative("Jumlah APE tidak valid").optional(),
+  location: z.string().min(1, "Lokasi APE tidak valid").optional().nullable(),
+  imageUrl: z.string().min(1, "imageUrl tidak valid").optional().nullable(),
 });
 const apeUpdateSchema = apeCreateSchema.partial();
 

@@ -38,7 +38,14 @@ function validate({ body, query, params }) {
       return next();
     } catch (err) {
       if (err instanceof ZodError) {
-        return res.status(400).json({ message: "Validasi gagal", errors: err.flatten() });
+        // Hindari message universal; ambil pesan dari skema sedetail mungkin.
+        const firstMessage = err.errors?.[0]?.message;
+        const flattened = err.flatten();
+
+        return res.status(400).json({
+          message: firstMessage,
+          errors: flattened,
+        });
       }
       return next(err);
     }

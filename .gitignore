@@ -4,3 +4,7 @@ node_modules
 uploads/documents
 uploads/images
 /generated/prisma
+jest.config.js
+jest.setup.js
+src/__tests__
+src/docs
