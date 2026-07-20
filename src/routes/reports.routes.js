@@ -8,12 +8,11 @@ const { listReports, createReport, getReport, updateReport, deleteReport } = req
 
 const router = express.Router();
 
-router.use(authMiddleware); // Semua role bisa baca
+router.use(authMiddleware);
 
 router.get("/", listReports);
 router.get("/:id", getReport);
 
-// Semua role bisa write (Admin, Kepsek, Guru)
 const uploadReportPhoto = uploadImage.fields(IMAGE_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 })));
 router.post("/", uploadReportPhoto, useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: reportCreateSchema }), createReport);
 router.put("/:id", uploadReportPhoto, useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: reportUpdateSchema }), updateReport);

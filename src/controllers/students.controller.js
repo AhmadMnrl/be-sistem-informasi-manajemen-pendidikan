@@ -74,7 +74,6 @@ async function createStudent(req, res) {
         ? `Duplikat pada field ${field}`
         : "Data duplikat (identifier/NIK/NISN)";
 
-      // format spesifik sesuai ekspektasi: "Data duplikat (identifier/NIK) ..." dan "... (NISN) ..."
       const msg = detail.replace(/_/g, " ");
       if (field && field.toLowerCase().includes("identifier")) return sendResponse(res, 409, "Data duplikat (identifier/NIK) pada data siswa");
       if (field && field.toLowerCase().includes("nisn")) return sendResponse(res, 409, "Data duplikat (NISN) pada data siswa");

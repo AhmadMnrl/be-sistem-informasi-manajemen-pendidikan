@@ -69,8 +69,6 @@ function useFirstUploadedFile(fieldNames = []) {
   };
 }
 
-
-// Error handler untuk multer - harus di tempatkan SETELAH middleware upload
 function handleMulterError(err, req, res, next) {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_UNEXPECTED_FILE") {

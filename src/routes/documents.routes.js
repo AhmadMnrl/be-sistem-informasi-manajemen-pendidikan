@@ -8,16 +8,13 @@ const { listDocuments, createDocument, getDocument, updateDocument, deleteDocume
 
 const router = express.Router();
 
-router.use(authMiddleware); // Semua role bisa baca
+router.use(authMiddleware);
 
 router.get("/", listDocuments);
 router.get("/:id", getDocument);
 router.get("/:id/download", downloadDocument);
 router.get("/:id/view", viewDocumentFile);
 
-// Hanya Admin & Kepsek yang bisa upload/update/delete
-// authorize dulu sebelum upload agar 403 dikirim tanpa memproses file
-// Support FE lama/new: upload key bisa `file` atau `filePath`
 const uploadDocumentFields = uploadDocument.fields(DOCUMENT_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 })));
 
 router.post("/", authorize("ADMIN", "KEPALA_SEKOLAH"), uploadDocumentFields, useFirstUploadedFile(DOCUMENT_UPLOAD_FIELDS), validate({ body: documentCreateSchema }), createDocument);

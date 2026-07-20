@@ -32,7 +32,6 @@ async function listLogs(req, res) {
       include: { user: { select: { id: true, name: true } } },
     });
 
-    // Tambahkan `userName` agar front-end mudah mengambil nama user
     const logsWithUserName = logs.map((l) => ({
       ...l,
       userName: l.user ? l.user.name : null,
@@ -40,7 +39,7 @@ async function listLogs(req, res) {
 
     return sendResponse(res, 200, "Data log aktivitas berhasil diambil", logsWithUserName);
   } catch (error) {
-    console.error("❌ listLogs error:", error);
+    console.error("listLogs error:", error);
     return sendResponse(res, 500, "Gagal mengambil data log aktivitas", null, error);
   }
 }

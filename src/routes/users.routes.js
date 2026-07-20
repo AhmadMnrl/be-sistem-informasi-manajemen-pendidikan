@@ -10,20 +10,16 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-// Endpoint publik (semua role)
 router.get("/options/teachers", getTeachersOptions);
 
-// Endpoint terbatas (hanya Admin)
 router.use(authorize("ADMIN"));
 router.get("/", listUsers);
 router.get("/:id", getUser);
-// Support optional image upload on create/update via multipart/form-data
 const imageFields = IMAGE_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 }));
 router.post("/", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: userCreateSchema }), createUser);
 router.put("/:id", uploadImage.fields(imageFields), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), validate({ body: userUpdateSchema }), updateUser);
 router.delete("/:id", deleteUser);
 
-// Upload foto identitas.
 router.post("/:id/photo", uploadImage.any(), useFirstUploadedFile(IMAGE_UPLOAD_FIELDS), uploadIdentityPhoto);
 
 

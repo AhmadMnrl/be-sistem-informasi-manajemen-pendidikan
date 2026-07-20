@@ -1,4 +1,3 @@
-// Utility untuk response standar
 function sendResponse(res, statusCode, message, data = null) {
 	const isSuccess = statusCode >= 200 && statusCode < 300;
 	const response = {

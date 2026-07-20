@@ -8,7 +8,7 @@ const { listApe, createApe, getApe, updateApe, deleteApe } = require("../control
 
 const router = express.Router();
 
-router.use(authMiddleware); // Semua role bisa akses (Admin, Kepsek, Guru)
+router.use(authMiddleware);
 
 const uploadApeImage = uploadImage.fields(IMAGE_UPLOAD_FIELDS.map((name) => ({ name, maxCount: 1 })));
 

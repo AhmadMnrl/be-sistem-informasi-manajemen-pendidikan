@@ -27,13 +27,12 @@ function normalizeFirstUploadedFile(req, res, next) {
   next();
 }
 
-router.use(authMiddleware); // Semua role bisa akses
+router.use(authMiddleware);
 
 router.get("/", listQuestionSections);
 router.get("/sections", listQuestionSections);
 router.get("/sections/:id", getQuestionSectionDetail);
 
-// Semua role bisa write (Admin, Kepsek, Guru)
 const uploadQuestionFiles = uploadImage.any();
 router.post("/", uploadQuestionFiles, normalizeFirstUploadedFile, parseQuestionsBody, validate({ body: questionCreateSchema }), createQuestion);
 router.put("/sections/:id", uploadQuestionFiles, normalizeFirstUploadedFile, parseQuestionsBody, validate({ body: questionSectionUpdateSchema }), updateQuestionSection);

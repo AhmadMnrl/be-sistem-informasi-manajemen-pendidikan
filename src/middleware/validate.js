@@ -38,7 +38,6 @@ function validate({ body, query, params }) {
       return next();
     } catch (err) {
       if (err instanceof ZodError) {
-        // Hindari message universal; ambil pesan dari skema sedetail mungkin.
         const firstMessage = err.errors?.[0]?.message;
         const flattened = err.flatten();
 

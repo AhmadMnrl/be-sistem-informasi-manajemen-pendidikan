@@ -57,7 +57,6 @@ async function createApe(req, res) {
         quantity: quantity || 0,
         location: location || null,
         imageUrl,
-        // track who created & updated this record
         createdBy: { connect: { id: req.user.id } },
         updatedBy: { connect: { id: req.user.id } },
       },
@@ -90,7 +89,6 @@ async function updateApe(req, res) {
   if (location !== undefined) data.location = location || null;
   if (req.file) data.imageUrl = buildImagePath(req.file.filename);
   else if (imageUrlFromBody !== undefined) data.imageUrl = normalizeFilePath(imageUrlFromBody);
-  // track who performed the update
   data.updatedBy = { connect: { id: req.user.id } };
   try {
     const updated = await prisma.ape.update({ where: { id }, data });

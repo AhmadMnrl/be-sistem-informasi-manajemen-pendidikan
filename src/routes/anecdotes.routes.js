@@ -8,7 +8,7 @@ const { listAnecdotes, createAnecdote, getAnecdote, updateAnecdote, deleteAnecdo
 
 const router = express.Router();
 
-router.use(authMiddleware); // Semua role bisa akses
+router.use(authMiddleware);
 
 router.get("/", listAnecdotes);
 router.get("/:id", getAnecdote);
